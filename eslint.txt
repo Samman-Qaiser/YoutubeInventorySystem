@@ -1,0 +1,18 @@
+﻿
+C:\Users\Asif Computer\Desktop\Hussain Coding\Web Projects\Youtube Stock\src\components\Navbar.jsx
+  2:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\Asif Computer\Desktop\Hussain Coding\Web Projects\Youtube Stock\src\components\Topbar.jsx
+  7:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\Asif Computer\Desktop\Hussain Coding\Web Projects\Youtube Stock\src\sections\ChartsSection.jsx
+  1:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\Asif Computer\Desktop\Hussain Coding\Web Projects\Youtube Stock\src\sections\RecentChannels.jsx
+  1:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\Asif Computer\Desktop\Hussain Coding\Web Projects\Youtube Stock\src\sections\StatsSection.jsx
+  2:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+Γ£û 5 problems (5 errors, 0 warnings)
+
