@@ -1,11 +1,14 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Search, Mail, LayoutGrid, List, X, Filter,
+  Search, Mail, LayoutGrid, List, X,
   ChevronLeft, ChevronRight, Users,
   Video, ShieldAlert, CheckCircle, Eye,
-  TrendingUp, Calendar, ExternalLink
+  TrendingUp, Calendar, ExternalLink,
+  SlidersHorizontal, ChevronUp, Plus
 } from "lucide-react";
+import AddChannelDrawer from "../components/AddChannelDrawer";
+import Toast from "../components/Toast";
 import { channelsData } from "../constants/data";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -149,6 +152,9 @@ function ChannelGridCard({ ch, index }) {
 // ─── main page ─────────────────────────────────────────────────────────────────
 export default function Channels() {
   const [view, setView] = useState("grid");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [toast, setToast] = useState(false);
   const [searchName, setSearchName] = useState("");
   const [searchMail, setSearchMail] = useState("");
   const [category, setCategory] = useState("All");
@@ -239,9 +245,37 @@ export default function Channels() {
     <div className="flex flex-col gap-6">
 
       {/* ── Page Header ── */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <h1 className="text-xl font-bold text-gray-800 dark:text-white">Channels</h1>
-        <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">Manage and browse all YouTube channels</p>
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="flex items-center justify-between"
+      >
+        <div>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-white">Channels</h1>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">Manage and browse all YouTube channels</p>
+        </div>
+
+        {/* Filters toggle button */}
+        <button
+          onClick={() => setFiltersOpen(!filtersOpen)}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium border transition-all
+            ${
+              activeCount > 0
+                ? "border-emerald-400 dark:border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20"
+                : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-600"
+            }`}
+        >
+          {filtersOpen
+            ? <ChevronUp size={14} />
+            : <SlidersHorizontal size={14} />}
+          <span>{filtersOpen ? "Hide Filters" : "Filters"}</span>
+          {activeCount > 0 && (
+            <span className="ml-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold text-white">
+              {activeCount}
+            </span>
+          )}
+        </button>
       </motion.div>
 
       {/* ── Stats Row ── */}
@@ -252,110 +286,116 @@ export default function Channels() {
         <StatCard label="Hacked / Lost"  value={hacked}    icon={ShieldAlert}   color="bg-orange-50 dark:bg-orange-900/20 text-orange-500" delay={0.15} />
       </div>
 
-      {/* ── Filter Bar ── */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.4 }}
-        className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4"
-      >
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Filter size={14} className="text-gray-400" />
-            <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Filters</span>
-            {activeCount > 0 && (
-              <span className="text-[10px] font-bold bg-emerald-500 text-white rounded-full px-1.5 py-0.5">{activeCount}</span>
-            )}
-          </div>
-          {activeCount > 0 && (
-            <button onClick={clearAll} className="text-xs text-red-400 hover:text-red-500 font-medium flex items-center gap-1 transition">
-              <X size={12} /> Clear All
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          {/* Name Search */}
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600" />
-            <input
-              value={searchName}
-              onChange={e => { setSearchName(e.target.value); setPage(1); }}
-              placeholder="Search by name..."
-              className={inputCls + " pl-8 pr-7"}
-            />
-            {searchName && (
-              <button onClick={() => setSearchName("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
-                <X size={12} />
-              </button>
-            )}
-          </div>
-
-          {/* Mail Search */}
-          <div className="relative">
-            <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600" />
-            <input
-              value={searchMail}
-              onChange={e => { setSearchMail(e.target.value); setPage(1); }}
-              placeholder="Search by email..."
-              className={inputCls + " pl-8 pr-7"}
-            />
-            {searchMail && (
-              <button onClick={() => setSearchMail("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
-                <X size={12} />
-              </button>
-            )}
-          </div>
-
-          {/* Category */}
-          <select value={category} onChange={e => { setCategory(e.target.value); setPage(1); }} className={selectCls}>
-            <option value="All">All Categories</option>
-            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-          </select>
-
-          {/* Monetization */}
-          <select value={monoFilter} onChange={e => { setMonoFilter(e.target.value); setPage(1); }} className={selectCls}>
-            <option value="All">All Monetization</option>
-            <option>Monetized</option>
-            <option>Not Monetized</option>
-            <option>Pending</option>
-          </select>
-
-          {/* Date Filter */}
-          <div className="flex gap-2">
-            <select
-              value={dateFilter}
-              onChange={e => { setDateFilter(e.target.value); setPage(1); }}
-              className={selectCls + " flex-1"}
-            >
-              <option value="all">All Time</option>
-              <option value="today">Today</option>
-              <option value="thisWeek">This Week</option>
-              <option value="lastWeek">Last Week</option>
-              <option value="thisMonth">This Month</option>
-              <option value="lastMonth">Last Month</option>
-              <option value="month">Specific Month</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Specific month row */}
-        {dateFilter === "month" && (
+      {/* ── Filter Bar (collapsible) ── */}
+      <AnimatePresence initial={false}>
+        {filtersOpen && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            className="grid grid-cols-2 gap-3 mt-3"
+            key="filter-panel"
+            initial={{ opacity: 0, height: 0, marginTop: -8 }}
+            animate={{ opacity: 1, height: "auto", marginTop: 0 }}
+            exit={{ opacity: 0, height: 0, marginTop: -8 }}
+            transition={{ duration: 0.28, ease: "easeInOut" }}
+            style={{ overflow: "hidden" }}
           >
-            <select value={dateMonth} onChange={e => { setDateMonth(e.target.value); setPage(1); }} className={selectCls}>
-              <option value="">Select Month</option>
-              {MONTHS.map(m => <option key={m}>{m}</option>)}
-            </select>
-            <select value={dateYear} onChange={e => { setDateYear(e.target.value); setPage(1); }} className={selectCls}>
-              {["2024","2023","2022"].map(y => <option key={y}>{y}</option>)}
-            </select>
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Filter Options</p>
+                {activeCount > 0 && (
+                  <button onClick={clearAll} className="text-xs text-red-400 hover:text-red-500 font-medium flex items-center gap-1 transition">
+                    <X size={12} /> Clear All
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                {/* Name Search */}
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600" />
+                  <input
+                    value={searchName}
+                    onChange={e => { setSearchName(e.target.value); setPage(1); }}
+                    placeholder="Search by name..."
+                    className={inputCls + " pl-8 pr-7"}
+                  />
+                  {searchName && (
+                    <button onClick={() => setSearchName("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Mail Search */}
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600" />
+                  <input
+                    value={searchMail}
+                    onChange={e => { setSearchMail(e.target.value); setPage(1); }}
+                    placeholder="Search by email..."
+                    className={inputCls + " pl-8 pr-7"}
+                  />
+                  {searchMail && (
+                    <button onClick={() => setSearchMail("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Category */}
+                <select value={category} onChange={e => { setCategory(e.target.value); setPage(1); }} className={selectCls}>
+                  <option value="All">All Categories</option>
+                  {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                </select>
+
+                {/* Monetization */}
+                <select value={monoFilter} onChange={e => { setMonoFilter(e.target.value); setPage(1); }} className={selectCls}>
+                  <option value="All">All Monetization</option>
+                  <option>Monetized</option>
+                  <option>Not Monetized</option>
+                  <option>Pending</option>
+                </select>
+
+                {/* Date Filter */}
+                <select
+                  value={dateFilter}
+                  onChange={e => { setDateFilter(e.target.value); setPage(1); }}
+                  className={selectCls}
+                >
+                  <option value="all">All Time</option>
+                  <option value="today">Today</option>
+                  <option value="thisWeek">This Week</option>
+                  <option value="lastWeek">Last Week</option>
+                  <option value="thisMonth">This Month</option>
+                  <option value="lastMonth">Last Month</option>
+                  <option value="month">Specific Month</option>
+                </select>
+              </div>
+
+              {/* Specific month row */}
+              <AnimatePresence>
+                {dateFilter === "month" && (
+                  <motion.div
+                    key="month-picker"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    style={{ overflow: "hidden" }}
+                    className="grid grid-cols-2 gap-3 mt-3"
+                  >
+                    <select value={dateMonth} onChange={e => { setDateMonth(e.target.value); setPage(1); }} className={selectCls}>
+                      <option value="">Select Month</option>
+                      {MONTHS.map(m => <option key={m}>{m}</option>)}
+                    </select>
+                    <select value={dateYear} onChange={e => { setDateYear(e.target.value); setPage(1); }} className={selectCls}>
+                      {["2024","2023","2022"].map(y => <option key={y}>{y}</option>)}
+                    </select>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </motion.div>
         )}
-      </motion.div>
+      </AnimatePresence>
 
       {/* ── Toolbar: count + view toggle ── */}
       <div className="flex items-center justify-between">
@@ -512,6 +552,36 @@ export default function Channels() {
           </button>
         </motion.div>
       )}
+
+      {/* ── FAB: Add Channel ── */}
+      <div className="fixed bottom-7 right-7 z-[80] group">
+        <span className="absolute bottom-full right-0 mb-2 px-2.5 py-1 rounded-lg bg-gray-800 dark:bg-gray-700 text-white text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow">
+          Add Channel
+        </span>
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setDrawerOpen(true)}
+          className="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg flex items-center justify-center transition-colors"
+        >
+          <Plus size={24} />
+        </motion.button>
+      </div>
+
+      {/* ── Drawer & Toast ── */}
+      <AddChannelDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onSuccess={() => {
+          setDrawerOpen(false);
+          setToast(true);
+        }}
+      />
+      <Toast
+        show={toast}
+        message="Channel added successfully! ✓"
+        onClose={() => setToast(false)}
+      />
 
     </div>
   );
