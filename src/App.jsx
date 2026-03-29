@@ -39,7 +39,7 @@ export default function App() {
           >
             <div className="p-6 flex-1">
               <Routes>
-                <Route path="/" element={<Home channels={channels} />} />
+                <Route path="/" element={<Home />} />
                 <Route path="/channels"  element={<Channels  channels={channels} setChannels={setChannels} />} />
                 <Route path="/purchases" element={<Purchases channels={channels} setChannels={setChannels} />} />
                 <Route path="/sales"     element={<Sales     channels={channels} setChannels={setChannels} />} />

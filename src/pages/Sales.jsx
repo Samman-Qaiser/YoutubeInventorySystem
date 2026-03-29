@@ -16,11 +16,8 @@ const PER_PAGE   = 10;
 // ─── CountUp hook ─────────────────────────────────────────────────────────────
 function useCountUp(target, duration = 950) {
   const [val, setVal] = useState(0);
-
   useEffect(() => {
-    setVal(0); // Reset when target changes
-    if (target <= 0) return;
-
+    if (target === 0) { setVal(0); return; }
     let frameId;
     const startTs = Date.now();
     const tick = () => {
@@ -187,6 +184,7 @@ export default function Sales({ channels }) {
       }
       return true;
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sold, searchName, searchSeller, searchBuyer, category, monoFilter, profitRange, dateFilter, dateMonth, dateYear]);
 
   // Filtered summary totals
