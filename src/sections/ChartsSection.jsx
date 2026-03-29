@@ -1,22 +1,55 @@
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import ReactApexChart from "react-apexcharts";
-import { monthlySalesData } from "../constants/data";
 
-const months = monthlySalesData.map((d) => d.month);
-const salesData = monthlySalesData.map((d) => d.sales);
-const purchasesData = monthlySalesData.map((d) => d.purchases);
-const profitData = monthlySalesData.map((d) => d.profit);
+export default function ChartsSection({ channels = [], darkMode }) {
+  const chartData = useMemo(() => {
+    // Generate last 6 months labels
+    const monthsArr = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      monthsArr.push({
+        label: d.toLocaleString("en-US", { month: "short" }),
+        month: d.getMonth(),
+        year: d.getFullYear(),
+        sales: 0,
+        purchases: 0
+      });
+    }
 
-const maxSale = Math.max(...salesData);
-const minSale = Math.min(...salesData);
-const avgSale = Math.round(salesData.reduce((a, b) => a + b) / salesData.length);
-const bestProfit = Math.max(...profitData);
-const worstProfit = Math.min(...profitData);
-const totalProfit = profitData.reduce((a, b) => a + b, 0);
-const bestMonth = months[profitData.indexOf(bestProfit)];
-const worstMonth = months[profitData.indexOf(worstProfit)];
+    // Populate data from channels
+    channels.forEach(ch => {
+      // For sales: use soldAt or skip if not sold
+      if (ch.status === "sold" && ch.soldAt) {
+        const sd = new Date(ch.soldAt);
+        const mIdx = monthsArr.findIndex(m => m.month === sd.getMonth() && m.year === sd.getFullYear());
+        if (mIdx !== -1) monthsArr[mIdx].sales += (Number(ch.salePrice) || 0);
+      }
+      
+      // For purchases: use createdAt
+      const cd = new Date(ch.createdAt);
+      const pIdx = monthsArr.findIndex(m => m.month === cd.getMonth() && m.year === cd.getFullYear());
+      if (pIdx !== -1) monthsArr[pIdx].purchases += (Number(ch.purchasePrice) || 0);
+    });
 
-export default function ChartsSection({ darkMode }) {
+    return {
+      labels:    monthsArr.map(m => m.label),
+      sales:     monthsArr.map(m => m.sales),
+      purchases: monthsArr.map(m => m.purchases),
+      profits:   monthsArr.map(m => m.sales - m.purchases)
+    };
+  }, [channels]);
+
+  const { labels, sales, purchases, profits } = chartData;
+  const maxSale = Math.max(...sales, 1);
+  const minSale = Math.min(...sales);
+  const avgSale = Math.round(sales.reduce((a, b) => a + b, 0) / sales.length);
+  const bestProfit = Math.max(...profits);
+  const worstProfit = Math.min(...profits);
+  const totalProfit = profits.reduce((a, b) => a + b, 0);
+  const bestMonth = labels[profits.indexOf(bestProfit)];
+  const worstMonth = labels[profits.indexOf(worstProfit)];
   const textColor = darkMode ? "#9ca3af" : "#6b7280";
   const gridColor = darkMode ? "#1f2937" : "#f3f4f6";
   const tooltipBg = darkMode ? "#111827" : "#ffffff";
@@ -53,7 +86,7 @@ export default function ChartsSection({ darkMode }) {
       hover: { size: 7 },
     },
     xaxis: {
-      categories: months,
+      categories: labels,
       labels: { style: { colors: textColor, fontSize: "12px" } },
       axisBorder: { show: false },
       axisTicks: { show: false },
@@ -81,7 +114,7 @@ export default function ChartsSection({ darkMode }) {
         const sale = series[0][dataPointIndex];
         const purchase = series[1][dataPointIndex];
         const profit = sale - purchase;
-        const month = months[dataPointIndex];
+        const month = labels[dataPointIndex];
         return `
           <div style="background:${tooltipBg};padding:12px 16px;border-radius:12px;border:1px solid ${darkMode ? "#374151" : "#e5e7eb"};font-size:12px;min-width:160px">
             <div style="font-weight:700;margin-bottom:8px;color:${darkMode ? "#f9fafb" : "#111827"}">${month}</div>
@@ -112,7 +145,7 @@ export default function ChartsSection({ darkMode }) {
       },
       background: "transparent",
     },
-    colors: profitData.map((v) => (v >= 0 ? "#8b5cf6" : "#ef4444")),
+    colors: profits.map((v) => (v >= 0 ? "#8b5cf6" : "#ef4444")),
     fill: {
       type: "gradient",
       gradient: {
@@ -144,7 +177,7 @@ export default function ChartsSection({ darkMode }) {
       style: { fontSize: "11px", fontWeight: 600, colors: [textColor] },
     },
     xaxis: {
-      categories: months,
+      categories: labels,
       labels: { style: { colors: textColor, fontSize: "12px" } },
       axisBorder: { show: false },
       axisTicks: { show: false },
@@ -168,10 +201,10 @@ export default function ChartsSection({ darkMode }) {
     tooltip: {
       theme: darkMode ? "dark" : "light",
       custom: ({ dataPointIndex }) => {
-        const month = months[dataPointIndex];
-        const sale = salesData[dataPointIndex];
-        const purchase = purchasesData[dataPointIndex];
-        const profit = profitData[dataPointIndex];
+        const month = labels[dataPointIndex];
+        const sale = sales[dataPointIndex];
+        const purchase = purchases[dataPointIndex];
+        const profit = profits[dataPointIndex];
         return `
           <div style="background:${tooltipBg};padding:12px 16px;border-radius:12px;border:1px solid ${darkMode ? "#374151" : "#e5e7eb"};font-size:12px;min-width:160px">
             <div style="font-weight:700;margin-bottom:8px;color:${darkMode ? "#f9fafb" : "#111827"}">${month}</div>
@@ -221,8 +254,8 @@ export default function ChartsSection({ darkMode }) {
         <ReactApexChart
           options={areaOptions}
           series={[
-            { name: "Sales", data: salesData },
-            { name: "Purchases", data: purchasesData },
+            { name: "Sales", data: sales },
+            { name: "Purchases", data: purchases },
           ]}
           type="area"
           height={230}
@@ -254,7 +287,7 @@ export default function ChartsSection({ darkMode }) {
 
         <ReactApexChart
           options={barOptions}
-          series={[{ name: "Profit", data: profitData }]}
+          series={[{ name: "Profit", data: profits }]}
           type="bar"
           height={230}
         />

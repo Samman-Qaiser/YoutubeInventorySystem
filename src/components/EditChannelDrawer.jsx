@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Link, Eye, EyeOff } from "lucide-react";
+import { X, Link, Eye, EyeOff, User } from "lucide-react";
 
 const CATEGORIES = ["Gaming","Tech","Food","Sports","Lifestyle","Religion","Education","Entertainment","Finance","Other"];
 const STATUSES   = ["available","sold","hacked","pending"];
 const VIOLATIONS = ["None","Strike","Community Guidelines","Copyright"];
-const TOTAL_FIELDS = 23;
+const TOTAL_FIELDS = 24;
 
 const inputCls =
   "w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 " +
@@ -52,6 +52,7 @@ function channelToForm(ch) {
     channelPassword: ch.channelPassword || "",
     primaryMail: ch.primaryMail || "",
     purchasePrice: ch.purchasePrice != null ? String(ch.purchasePrice) : "",
+    sellerName: ch.sellerName || "",
     salePrice: ch.salePrice != null ? String(ch.salePrice) : "",
     status: ch.status || "",
   };
@@ -291,11 +292,17 @@ export default function EditChannelDrawer({ channel, open, onClose, onSave }) {
                 <Field label="Purchase Price (Rs)" required error={errors.purchasePrice}>
                   <input ref={setRef(20)} type="number" value={form.purchasePrice} onChange={e=>set("purchasePrice",e.target.value)} onKeyDown={kd(20)} placeholder="e.g. 280000" className={inputCls}/>
                 </Field>
+                <Field label="Seller Name" error={errors.sellerName}>
+                  <div className="relative">
+                    <User size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 pointer-events-none" />
+                    <input ref={setRef(21)} value={form.sellerName} onChange={e=>set("sellerName",e.target.value)} onKeyDown={kd(21)} placeholder="Enter seller name" className={inputCls+" pl-8"}/>
+                  </div>
+                </Field>
                 <Field label="Sale Price (Rs)" error={errors.salePrice}>
-                  <input ref={setRef(21)} type="number" value={form.salePrice} onChange={e=>set("salePrice",e.target.value)} onKeyDown={kd(21)} placeholder="e.g. 380000" className={inputCls}/>
+                  <input ref={setRef(22)} type="number" value={form.salePrice} onChange={e=>set("salePrice",e.target.value)} onKeyDown={kd(22)} placeholder="e.g. 380000" className={inputCls}/>
                 </Field>
                 <Field label="Status" required error={errors.status}>
-                  <select ref={setRef(22)} value={form.status} onChange={e=>set("status",e.target.value)} onKeyDown={kd(22,true)} className={selectCls}>
+                  <select ref={setRef(23)} value={form.status} onChange={e=>set("status",e.target.value)} onKeyDown={kd(23,true)} className={selectCls}>
                     <option value="">Select status</option>
                     {STATUSES.map(s=><option key={s}>{s}</option>)}
                   </select>

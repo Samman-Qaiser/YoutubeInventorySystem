@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
-import { recentChannels } from "../constants/data";
 
-export default function RecentChannels() {
+export default function RecentChannels({ channels = [] }) {
+  const recent = [...channels].sort((a,b) => b.id - a.id).slice(0, 5);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 40 }}
@@ -25,7 +26,7 @@ export default function RecentChannels() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-            {recentChannels.map((ch, i) => (
+            {recent.map((ch, i) => (
               <motion.tr
                 key={ch.id}
                 initial={{ opacity: 0 }}
@@ -33,10 +34,10 @@ export default function RecentChannels() {
                 transition={{ delay: 0.6 + i * 0.05 }}
                 className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
               >
-                <td className="px-5 py-3.5 font-medium text-gray-800 dark:text-gray-200">{ch.name}</td>
-                <td className="px-5 py-3.5 text-gray-500 dark:text-gray-400">{ch.niche}</td>
-                <td className="px-5 py-3.5 text-gray-500 dark:text-gray-400">{ch.subscribers}</td>
-                <td className="px-5 py-3.5 font-medium text-gray-700 dark:text-gray-300">Rs {ch.salePrice.toLocaleString()}</td>
+                <td className="px-5 py-3.5 font-medium text-gray-800 dark:text-gray-200">{ch.channelName}</td>
+                <td className="px-5 py-3.5 text-gray-500 dark:text-gray-400">{ch.category}</td>
+                <td className="px-5 py-3.5 text-gray-500 dark:text-gray-400">{ch.channelSubscribers.toLocaleString()}</td>
+                <td className="px-5 py-3.5 font-medium text-gray-700 dark:text-gray-300">Rs {(ch.salePrice||0).toLocaleString()}</td>
                 <td className="px-5 py-3.5">
                   <span className={`px-2.5 py-1 rounded-full text-xs font-semibold
                     ${ch.status === "sold"

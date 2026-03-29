@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, Eye, EyeOff, Share2, Copy, ExternalLink,
-  MessageCircle, CheckCircle, Mail, Lock, Pencil
+  MessageCircle, CheckCircle, Mail, Lock, Pencil, User
 } from "lucide-react";
 
 // ─── category theming ─────────────────────────────────────────────────────────
@@ -329,6 +329,16 @@ export default function ViewChannelDrawer({ channel:ch, open, onClose, onEdit })
                 <div className={`rounded-2xl p-3 text-center ${profit>=0?"bg-violet-50 dark:bg-violet-900/15":"bg-red-50 dark:bg-red-900/15"}`}>
                   <p className={`text-[10px] font-semibold uppercase tracking-wide mb-1.5 ${profit>=0?"text-violet-400":"text-red-400"}`}>Profit</p>
                   <p className={`text-base font-bold ${profit>=0?"text-violet-600 dark:text-violet-400":"text-red-600 dark:text-red-400"}`}>{fmtRs(profit)}</p>
+                </div>
+              </div>
+              {/* Seller row */}
+              <div className="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800/60">
+                <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
+                  <User size={14} className="text-gray-400 dark:text-gray-500"/>
+                </div>
+                <div className="flex-1 flex items-center justify-between">
+                  <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Seller</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-200">{ch.sellerName || "—"}</p>
                 </div>
               </div>
             </motion.div>

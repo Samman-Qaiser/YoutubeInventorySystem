@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { TrendingUp, ShoppingCart, DollarSign, Video, CheckCircle, AlertTriangle, Eye, EyeOff } from "lucide-react";
-import { dummyStats } from "../constants/data";
 
 function CountUp({ value, prefix = "", hidden = false }) {
   const count = useMotionValue(0);
@@ -17,17 +16,27 @@ function CountUp({ value, prefix = "", hidden = false }) {
   return <motion.span>{rounded}</motion.span>;
 }
 
-const cards = [
-  { label: "Total Sales", value: dummyStats.totalSale, icon: TrendingUp, accent: "#10b981", prefix: "Rs ", change: "+12.5%", up: true, hideable: false },
-  { label: "Total Purchases", value: dummyStats.totalPurchase, icon: ShoppingCart, accent: "#3b82f6", prefix: "Rs ", change: "+8.2%", up: true, hideable: false },
-  { label: "Total Profit", value: dummyStats.totalProfit, icon: DollarSign, accent: "#8b5cf6", prefix: "Rs ", change: "+18.9%", up: true, hideable: true },
-  { label: "Total Channels", value: dummyStats.totalChannels, icon: Video, accent: "#ef4444", prefix: "", change: "+4", up: true, hideable: false },
-  { label: "Channels Sold", value: dummyStats.soldChannels, icon: CheckCircle, accent: "#14b8a6", prefix: "", change: "+3", up: true, hideable: false },
-  { label: "Hacked / Lost", value: dummyStats.hackedChannels, icon: AlertTriangle, accent: "#f97316", prefix: "", change: "-1", up: false, hideable: false },
-];
-
-export default function StatsSection() {
+export default function StatsSection({ channels = [] }) {
   const [profitHidden, setProfitHidden] = useState(false);
+
+  const sold = channels.filter(c => c.status === "sold");
+  const liveStats = {
+    totalSales:    sold.reduce((s,c) => s + (Number(c.salePrice)||0), 0),
+    totalPurchase: channels.reduce((s,c) => s + (Number(c.purchasePrice)||0), 0),
+    totalProfit:   sold.reduce((s,c) => s + ((Number(c.salePrice)||0) - (Number(c.purchasePrice)||0)), 0),
+    totalCount:    channels.length,
+    soldCount:     sold.length,
+    hackedCount:   channels.filter(c => c.status === "hacked").length,
+  };
+
+  const cards = [
+    { label: "Total Sales", value: liveStats.totalSales, icon: TrendingUp, accent: "#10b981", prefix: "Rs ", change: "+12.5%", up: true, hideable: false },
+    { label: "Total Purchases", value: liveStats.totalPurchase, icon: ShoppingCart, accent: "#3b82f6", prefix: "Rs ", change: "+8.2%", up: true, hideable: false },
+    { label: "Total Profit", value: liveStats.totalProfit, icon: DollarSign, accent: "#8b5cf6", prefix: "Rs ", change: "+18.9%", up: true, hideable: true },
+    { label: "Total Channels", value: liveStats.totalCount, icon: Video, accent: "#ef4444", prefix: "", change: "+4", up: true, hideable: false },
+    { label: "Channels Sold", value: liveStats.soldCount, icon: CheckCircle, accent: "#14b8a6", prefix: "", change: "+3", up: true, hideable: false },
+    { label: "Hacked / Lost", value: liveStats.hackedCount, icon: AlertTriangle, accent: "#f97316", prefix: "", change: "-1", up: false, hideable: false },
+  ];
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">

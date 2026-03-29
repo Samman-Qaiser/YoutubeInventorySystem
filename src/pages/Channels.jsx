@@ -3,15 +3,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, Mail, LayoutGrid, List, X,
   ChevronLeft, ChevronRight, Users,
-  Video, ShieldAlert, CheckCircle, Eye, Pencil,
+  Video, ShieldAlert, CheckCircle, Eye, Pencil, Trash2,
   TrendingUp, Calendar, ExternalLink,
   SlidersHorizontal, ChevronUp, Plus
 } from "lucide-react";
 import AddChannelDrawer from "../components/AddChannelDrawer";
 import ViewChannelDrawer from "../components/ViewChannelDrawer";
 import EditChannelDrawer from "../components/EditChannelDrawer";
+import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import Toast from "../components/Toast";
-import { channelsData } from "../constants/data";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const CATEGORIES = ["Gaming", "Tech", "Food", "Sports", "Lifestyle", "Religion", "Education", "Entertainment", "Finance", "Other"];
@@ -88,7 +88,7 @@ function StatCard({ label, value, icon, color, delay }) {
 }
 
 // ─── channel grid card ─────────────────────────────────────────────────────────
-function ChannelGridCard({ ch, index, onView, onEdit }) {
+function ChannelGridCard({ ch, index, onView, onEdit, onDelete }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -153,6 +153,11 @@ function ChannelGridCard({ ch, index, onView, onEdit }) {
               title="Edit Channel"
               className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-500 transition"
             ><Pencil size={13} /></button>
+            <button
+              onClick={() => onDelete(ch)}
+              title="Delete Channel"
+              className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition"
+            ><Trash2 size={13} /></button>
           </div>
         </div>
       </div>
@@ -161,14 +166,14 @@ function ChannelGridCard({ ch, index, onView, onEdit }) {
 }
 
 // ─── main page ─────────────────────────────────────────────────────────────────
-export default function Channels() {
+export default function Channels({ channels, setChannels }) {
   const [view, setView] = useState("grid");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [viewChannel, setViewChannel] = useState(null);
   const [editChannel, setEditChannel] = useState(null);
+  const [deleteChannel, setDeleteChannel] = useState(null);
   const [toast, setToast] = useState({ show: false, message: "", variant: "success" });
-  const [channels, setChannels] = useState([...channelsData]);
   const [searchName, setSearchName] = useState("");
   const [searchMail, setSearchMail] = useState("");
   const [category, setCategory] = useState("All");
@@ -466,6 +471,7 @@ export default function Channels() {
                 index={i}
                 onView={setViewChannel}
                 onEdit={setEditChannel}
+                onDelete={setDeleteChannel}
               />
             ))}
           </motion.div>
@@ -526,6 +532,7 @@ export default function Channels() {
                         <div className="flex items-center gap-1">
                           <button onClick={() => setViewChannel(ch)} title="View Details" className="p-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-500 transition"><Eye size={13}/></button>
                           <button onClick={() => setEditChannel(ch)} title="Edit Channel" className="p-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-500 transition"><Pencil size={13}/></button>
+                          <button onClick={() => setDeleteChannel(ch)} title="Delete Channel" className="p-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition"><Trash2 size={13}/></button>
                         </div>
                       </td>
                     </motion.tr>
@@ -596,6 +603,16 @@ export default function Channels() {
         onSuccess={() => {
           setDrawerOpen(false);
           setToast({ show: true, message: "Channel added successfully! ✓", variant: "success" });
+        }}
+      />
+      <DeleteConfirmModal
+        channel={deleteChannel}
+        open={!!deleteChannel}
+        onCancel={() => setDeleteChannel(null)}
+        onConfirm={() => {
+          setChannels(prev => prev.filter(c => c.id !== deleteChannel.id));
+          setDeleteChannel(null);
+          setToast({ show: true, message: `"${deleteChannel.channelName}" deleted successfully`, variant: "danger" });
         }}
       />
       <ViewChannelDrawer

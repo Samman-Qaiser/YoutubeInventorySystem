@@ -5,6 +5,7 @@ import { CheckCircle, X } from "lucide-react";
 const VARIANTS = {
   success: "bg-emerald-500",
   info:    "bg-blue-500",
+  danger:  "bg-red-500",
 };
 
 export default function Toast({ message, show, onClose, variant = "success" }) {
