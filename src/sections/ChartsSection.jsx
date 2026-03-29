@@ -77,7 +77,7 @@ export default function ChartsSection({ darkMode }) {
     tooltip: {
       theme: darkMode ? "dark" : "light",
       style: { fontSize: "12px" },
-      custom: ({ series, seriesIndex, dataPointIndex }) => {
+      custom: ({ series, dataPointIndex }) => {
         const sale = series[0][dataPointIndex];
         const purchase = series[1][dataPointIndex];
         const profit = sale - purchase;
