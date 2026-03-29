@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function Topbar({ darkMode, setDarkMode, collapsed, setMobileMenuOpen }) {
+export default function Topbar({ darkMode, setDarkMode, collapsed, setMobileMenuOpen, onLogout }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   
@@ -135,7 +135,10 @@ export default function Topbar({ darkMode, setDarkMode, collapsed, setMobileMenu
                   <Settings size={16} /> Settings
                 </button>
                 <div className="h-px bg-gray-100 dark:bg-gray-800 my-1"></div>
-                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                <button 
+                  onClick={onLogout}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
                   <LogOut size={16} /> Logout
                 </button>
               </motion.div>

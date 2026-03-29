@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Video, ShoppingCart,
   TrendingUp, BarChart2, ShieldAlert,
-  ChevronLeft, ChevronRight, Store, X
+  ChevronLeft, ChevronRight, Store, X, LogOut
 } from "lucide-react";
 import { navLinks } from "../constants/data";
 
@@ -12,7 +12,7 @@ const iconMap = {
   TrendingUp, BarChart2, ShieldAlert,
 };
 
-export default function Navbar({ collapsed, setCollapsed, mobileMenuOpen, setMobileMenuOpen }) {
+export default function Navbar({ collapsed, setCollapsed, mobileMenuOpen, setMobileMenuOpen, onLogout }) {
   return (
     <>
       {/* Mobile Overlay */}
@@ -88,6 +88,16 @@ export default function Navbar({ collapsed, setCollapsed, mobileMenuOpen, setMob
               </motion.div>
             );
           })}
+
+          <button
+            onClick={onLogout}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 mt-2"
+          >
+            <LogOut size={18} className="shrink-0" />
+            <span className={`truncate ${collapsed ? "max-md:block md:hidden" : ""}`}>
+              Logout
+            </span>
+          </button>
         </nav>
 
         {/* Bottom */}
