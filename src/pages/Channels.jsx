@@ -3,21 +3,23 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, Mail, LayoutGrid, List, X,
   ChevronLeft, ChevronRight, Users,
-  Video, ShieldAlert, CheckCircle, Eye,
+  Video, ShieldAlert, CheckCircle, Eye, Pencil,
   TrendingUp, Calendar, ExternalLink,
   SlidersHorizontal, ChevronUp, Plus
 } from "lucide-react";
 import AddChannelDrawer from "../components/AddChannelDrawer";
+import ViewChannelDrawer from "../components/ViewChannelDrawer";
+import EditChannelDrawer from "../components/EditChannelDrawer";
 import Toast from "../components/Toast";
 import { channelsData } from "../constants/data";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const CATEGORIES = ["Gaming", "Tech", "Food", "Sports", "Lifestyle", "Religion", "Education", "Entertainment", "Finance", "Other"];
-const MONTHS     = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 function fmtSubs(n) {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
-  if (n >= 1_000)     return (n / 1_000).toFixed(0) + "K";
+  if (n >= 1_000) return (n / 1_000).toFixed(0) + "K";
   return n;
 }
 
@@ -41,27 +43,27 @@ function avatarColor(id) { return AVATAR_COLORS[id % AVATAR_COLORS.length]; }
 // ─── badge helpers ─────────────────────────────────────────────────────────────
 const STATUS_STYLES = {
   available: "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400",
-  sold:      "bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400",
-  hacked:    "bg-orange-50 dark:bg-orange-900/20 text-orange-500 dark:text-orange-400",
+  sold: "bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400",
+  hacked: "bg-orange-50 dark:bg-orange-900/20 text-orange-500 dark:text-orange-400",
 };
 
 const MONO_STYLES = {
-  Monetized:     "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400",
+  Monetized: "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400",
   "Not Monetized": "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400",
-  Pending:       "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400",
+  Pending: "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400",
 };
 
 const CAT_COLORS = {
   Gaming: "bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400",
-  Tech:   "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400",
-  Food:   "bg-orange-50 dark:bg-orange-900/20 text-orange-500 dark:text-orange-400",
+  Tech: "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400",
+  Food: "bg-orange-50 dark:bg-orange-900/20 text-orange-500 dark:text-orange-400",
   Sports: "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400",
   Lifestyle: "bg-pink-50 dark:bg-pink-900/20 text-pink-500 dark:text-pink-400",
-  Religion:  "bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400",
+  Religion: "bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400",
   Education: "bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400",
   Entertainment: "bg-rose-50 dark:bg-rose-900/20 text-rose-500 dark:text-rose-400",
   Finance: "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400",
-  Other:   "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400",
+  Other: "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400",
 };
 
 // ─── mini stat card ────────────────────────────────────────────────────────────
@@ -86,7 +88,7 @@ function StatCard({ label, value, icon, color, delay }) {
 }
 
 // ─── channel grid card ─────────────────────────────────────────────────────────
-function ChannelGridCard({ ch, index }) {
+function ChannelGridCard({ ch, index, onView, onEdit }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -140,9 +142,18 @@ function ChannelGridCard({ ch, index }) {
           <p className="text-[10px] text-gray-400 dark:text-gray-500 flex items-center gap-1">
             <Calendar size={10} /> {ch.createdAt}
           </p>
-          <button className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline">
-            <Eye size={11} /> View
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onView(ch)}
+              title="View Details"
+              className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-500 transition"
+            ><Eye size={13} /></button>
+            <button
+              onClick={() => onEdit(ch)}
+              title="Edit Channel"
+              className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-500 transition"
+            ><Pencil size={13} /></button>
+          </div>
         </div>
       </div>
     </motion.div>
@@ -154,7 +165,10 @@ export default function Channels() {
   const [view, setView] = useState("grid");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [toast, setToast] = useState(false);
+  const [viewChannel, setViewChannel] = useState(null);
+  const [editChannel, setEditChannel] = useState(null);
+  const [toast, setToast] = useState({ show: false, message: "", variant: "success" });
+  const [channels, setChannels] = useState([...channelsData]);
   const [searchName, setSearchName] = useState("");
   const [searchMail, setSearchMail] = useState("");
   const [category, setCategory] = useState("All");
@@ -170,11 +184,11 @@ export default function Channels() {
   // ── filtering ──────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     const now = new Date();
-    return channelsData.filter(ch => {
-      const nameOk  = ch.channelName.toLowerCase().includes(searchName.toLowerCase());
-      const mailOk  = ch.primaryMail.toLowerCase().includes(searchMail.toLowerCase());
-      const catOk   = category === "All" || ch.category === category;
-      const monoOk  = monoFilter === "All" || ch.monetizationStatus === monoFilter;
+    return channels.filter(ch => {
+      const nameOk = ch.channelName.toLowerCase().includes(searchName.toLowerCase());
+      const mailOk = ch.primaryMail.toLowerCase().includes(searchMail.toLowerCase());
+      const catOk = category === "All" || ch.category === category;
+      const monoOk = monoFilter === "All" || ch.monetizationStatus === monoFilter;
 
       let dateOk = true;
       const d = new Date(ch.createdAt);
@@ -184,7 +198,7 @@ export default function Channels() {
         const start = new Date(now); start.setDate(now.getDate() - now.getDay());
         dateOk = d >= start;
       } else if (dateFilter === "lastWeek") {
-        const end   = new Date(now); end.setDate(now.getDate() - now.getDay());
+        const end = new Date(now); end.setDate(now.getDate() - now.getDay());
         const start = new Date(end); start.setDate(end.getDate() - 7);
         dateOk = d >= start && d < end;
       } else if (dateFilter === "thisMonth") {
@@ -199,12 +213,12 @@ export default function Channels() {
 
       return nameOk && mailOk && catOk && monoOk && dateOk;
     });
-  }, [searchName, searchMail, category, monoFilter, dateFilter, dateMonth, dateYear]);
+  }, [channels, searchName, searchMail, category, monoFilter, dateFilter, dateMonth, dateYear]);
 
   // ── pagination ─────────────────────────────────────────────────────────────
-  const perPage   = view === "grid" ? GRID_PER_PAGE : LIST_PER_PAGE;
+  const perPage = view === "grid" ? GRID_PER_PAGE : LIST_PER_PAGE;
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
-  const safePage  = Math.min(page, totalPages);
+  const safePage = Math.min(page, totalPages);
   const paginated = filtered.slice((safePage - 1) * perPage, safePage * perPage);
 
   const goPage = (p) => setPage(Math.max(1, Math.min(totalPages, p)));
@@ -223,16 +237,16 @@ export default function Channels() {
   };
 
   // ── stats ──────────────────────────────────────────────────────────────────
-  const total     = channelsData.length;
-  const available = channelsData.filter(c => c.status === "available").length;
-  const sold      = channelsData.filter(c => c.status === "sold").length;
-  const hacked    = channelsData.filter(c => c.status === "hacked").length;
+  const total = channels.length;
+  const available = channels.filter(c => c.status === "available").length;
+  const sold = channels.filter(c => c.status === "sold").length;
+  const hacked = channels.filter(c => c.status === "hacked").length;
 
   // ── page numbers helper ────────────────────────────────────────────────────
   function pageNumbers() {
     const pages = [];
     let start = Math.max(1, safePage - 2);
-    let end   = Math.min(totalPages, start + 4);
+    let end = Math.min(totalPages, start + 4);
     if (end - start < 4) start = Math.max(1, end - 4);
     for (let i = start; i <= end; i++) pages.push(i);
     return pages;
@@ -260,10 +274,9 @@ export default function Channels() {
         <button
           onClick={() => setFiltersOpen(!filtersOpen)}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium border transition-all
-            ${
-              activeCount > 0
-                ? "border-emerald-400 dark:border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20"
-                : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-600"
+            ${activeCount > 0
+              ? "border-emerald-400 dark:border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20"
+              : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-600"
             }`}
         >
           {filtersOpen
@@ -280,10 +293,10 @@ export default function Channels() {
 
       {/* ── Stats Row ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Total Channels" value={total}     icon={Video}         color="bg-blue-50 dark:bg-blue-900/20 text-blue-500"    delay={0} />
-        <StatCard label="Available"      value={available} icon={CheckCircle}   color="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500" delay={0.05} />
-        <StatCard label="Sold"           value={sold}      icon={TrendingUp}    color="bg-red-50 dark:bg-red-900/20 text-red-500"       delay={0.1} />
-        <StatCard label="Hacked / Lost"  value={hacked}    icon={ShieldAlert}   color="bg-orange-50 dark:bg-orange-900/20 text-orange-500" delay={0.15} />
+        <StatCard label="Total Channels" value={total} icon={Video} color="bg-blue-50 dark:bg-blue-900/20 text-blue-500" delay={0} />
+        <StatCard label="Available" value={available} icon={CheckCircle} color="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500" delay={0.05} />
+        <StatCard label="Sold" value={sold} icon={TrendingUp} color="bg-red-50 dark:bg-red-900/20 text-red-500" delay={0.1} />
+        <StatCard label="Hacked / Lost" value={hacked} icon={ShieldAlert} color="bg-orange-50 dark:bg-orange-900/20 text-orange-500" delay={0.15} />
       </div>
 
       {/* ── Filter Bar (collapsible) ── */}
@@ -387,7 +400,7 @@ export default function Channels() {
                       {MONTHS.map(m => <option key={m}>{m}</option>)}
                     </select>
                     <select value={dateYear} onChange={e => { setDateYear(e.target.value); setPage(1); }} className={selectCls}>
-                      {["2024","2023","2022"].map(y => <option key={y}>{y}</option>)}
+                      {["2024", "2023", "2022"].map(y => <option key={y}>{y}</option>)}
                     </select>
                   </motion.div>
                 )}
@@ -446,7 +459,15 @@ export default function Channels() {
           <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"
           >
-            {paginated.map((ch, i) => <ChannelGridCard key={ch.id} ch={ch} index={i} />)}
+            {paginated.map((ch, i) => (
+              <ChannelGridCard
+                key={ch.id}
+                ch={ch}
+                index={i}
+                onView={setViewChannel}
+                onEdit={setEditChannel}
+              />
+            ))}
           </motion.div>
         )}
 
@@ -459,7 +480,7 @@ export default function Channels() {
               <table className="w-full text-sm min-w-[900px]">
                 <thead className="bg-gray-50 dark:bg-gray-800/50">
                   <tr>
-                    {["Channel","Category","Subscribers","Monetization","Status","Buy Price","Sale Price","Date",""].map((h, i) => (
+                    {["Channel", "Category", "Subscribers", "Monetization", "Status", "Buy Price", "Sale Price", "Date", ""].map((h, i) => (
                       <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -488,7 +509,7 @@ export default function Channels() {
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${CAT_COLORS[ch.category]}`}>{ch.category}</span>
                       </td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">
-                        <span className="flex items-center gap-1"><Users size={12} className="text-gray-300"/>{fmtSubs(ch.channelSubscribers)}</span>
+                        <span className="flex items-center gap-1"><Users size={12} className="text-gray-300" />{fmtSubs(ch.channelSubscribers)}</span>
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${MONO_STYLES[ch.monetizationStatus]}`}>{ch.monetizationStatus}</span>
@@ -502,9 +523,10 @@ export default function Channels() {
                       <td className="px-4 py-3 text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">{fmtRs(ch.salePrice)}</td>
                       <td className="px-4 py-3 text-gray-400 dark:text-gray-500 whitespace-nowrap text-xs">{ch.createdAt}</td>
                       <td className="px-4 py-3">
-                        <button className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline whitespace-nowrap">
-                          <ExternalLink size={11} /> View
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => setViewChannel(ch)} title="View Details" className="p-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-500 transition"><Eye size={13}/></button>
+                          <button onClick={() => setEditChannel(ch)} title="Edit Channel" className="p-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-500 transition"><Pencil size={13}/></button>
+                        </div>
                       </td>
                     </motion.tr>
                   ))}
@@ -533,11 +555,10 @@ export default function Channels() {
             <button
               key={p}
               onClick={() => goPage(p)}
-              className={`w-8 h-8 rounded-xl text-sm font-medium transition ${
-                p === safePage
+              className={`w-8 h-8 rounded-xl text-sm font-medium transition ${p === safePage
                   ? "bg-emerald-500 text-white shadow-sm"
                   : "border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-              }`}
+                }`}
             >
               {p}
             </button>
@@ -574,13 +595,30 @@ export default function Channels() {
         onClose={() => setDrawerOpen(false)}
         onSuccess={() => {
           setDrawerOpen(false);
-          setToast(true);
+          setToast({ show: true, message: "Channel added successfully! ✓", variant: "success" });
+        }}
+      />
+      <ViewChannelDrawer
+        channel={viewChannel}
+        open={!!viewChannel}
+        onClose={() => setViewChannel(null)}
+        onEdit={(ch) => { setViewChannel(null); setEditChannel(ch); }}
+      />
+      <EditChannelDrawer
+        channel={editChannel}
+        open={!!editChannel}
+        onClose={() => setEditChannel(null)}
+        onSave={(updated) => {
+          setChannels(prev => prev.map(c => c.id === updated.id ? updated : c));
+          setEditChannel(null);
+          setToast({ show: true, message: "Channel updated successfully! ✓", variant: "info" });
         }}
       />
       <Toast
-        show={toast}
-        message="Channel added successfully! ✓"
-        onClose={() => setToast(false)}
+        show={toast.show}
+        message={toast.message}
+        variant={toast.variant}
+        onClose={() => setToast(t => ({ ...t, show: false }))}
       />
 
     </div>
