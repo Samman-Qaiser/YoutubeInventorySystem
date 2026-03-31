@@ -128,12 +128,12 @@ export default function Topbar({ darkMode, setDarkMode, collapsed, setMobileMenu
                 transition={{ duration: 0.2 }}
                 className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-lg p-2 z-50"
               >
-                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                {/* <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                   <User size={16} /> My Profile
                 </button>
                 <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                   <Settings size={16} /> Settings
-                </button>
+                </button> */}
                 <div className="h-px bg-gray-100 dark:bg-gray-800 my-1"></div>
                 <button 
                   onClick={onLogout}
