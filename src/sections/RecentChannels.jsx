@@ -36,7 +36,7 @@ export default function RecentChannels() {
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Recent Channels</h3>
         </div>
         <div className="flex items-center justify-center py-12">
-          <p className="text-sm text-red-500">Failed to load channels</p>
+          <p className="text-sm text-red-500">Error in channel loading</p>
         </div>
       </motion.div>
     );
