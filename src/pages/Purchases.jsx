@@ -463,7 +463,7 @@ export default function Purchases() {
       <div className="flex items-center gap-3 flex-wrap">
         <button onClick={() => setFiltersOpen(v => !v)}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm border transition ${filtersOpen ? "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700" : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"} ${activeFilters > 0 ? "border-emerald-400 dark:border-emerald-600" : ""}`}>
-          {filtersOpen ? <><ChevronUp size={14}/><span className="text-gray-600 dark:text-gray-300">Hide Filters</span></> : <><SlidersHorizontal size={14}/><span className="text-gray-600 dark:text-gray-300">Filters</span></>}
+          {filtersOpen ? <><ChevronUp className="text-gray-600  dark:text-gray-300" size={14}/><span className="text-gray-600 dark:text-gray-300">Hide Filters</span></> : <><SlidersHorizontal className="text-gray-600  dark:text-gray-300" size={14}/><span className="text-gray-600 dark:text-gray-300">Filters</span></>}
           {activeFilters > 0 && <span className="w-4 h-4 rounded-full bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center ml-0.5">{activeFilters}</span>}
         </button>
         {activeFilters > 0 && (

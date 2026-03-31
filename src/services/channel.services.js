@@ -55,7 +55,22 @@ const endOfLastMonth = () => {
   d.setHours(23, 59, 59, 999)
   return Timestamp.fromDate(d)
 }
-
+const startOfCurrentMonth = () => {
+  const d = new Date()
+  // Set to 1st of current month, midnight exactly
+  return Timestamp.fromDate(
+    new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0)
+  )
+}
+ 
+const endOfCurrentMonth = () => {
+  const d = new Date()
+  // Last millisecond of current month
+  // Day 0 of NEXT month = last day of current month
+  return Timestamp.fromDate(
+    new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999)
+  )
+}
 // map snapshot doc to plain object
 const mapDoc = (d) => ({ id: d.id, ...d.data() })
 
@@ -202,55 +217,340 @@ export const fetchChannelById = async (id) => {
 
 // ─── PROFIT queries ───────────────────────────────────────────────────────────
 
-// this week profit — only terminated_without_loss channels
-// profit = salePrice - purchasePrice
-export const fetchThisWeekProfit = async () => {
-  const q = query(
-    colRef(),
-    where('terminationType', '==', 'without_loss'),
-    where('terminatedAt', '>=', startOfThisWeek()),
-    orderBy('terminatedAt', 'desc')
-  )
-  const snap = await getDocs(q)
-  const channels = snap.docs.map(mapDoc)
-  const total = channels.reduce((sum, ch) => {
-    return sum + ((Number(ch.salePrice) || 0) - (Number(ch.purchasePrice) || 0))
-  }, 0)
-  return { channels, total }
-}
+/// ===================== UPDATED PROFIT/LOSS FUNCTIONS =====================
 
-// last month profit
-export const fetchLastMonthProfit = async () => {
-  const q = query(
-    colRef(),
-    where('terminationType', '==', 'without_loss'),
-    where('terminatedAt', '>=', startOfLastMonth()),
-    where('terminatedAt', '<=', endOfLastMonth()),
-    orderBy('terminatedAt', 'desc')
-  )
-  const snap = await getDocs(q)
-  const channels = snap.docs.map(mapDoc)
-  const total = channels.reduce((sum, ch) => {
-    return sum + ((Number(ch.salePrice) || 0) - (Number(ch.purchasePrice) || 0))
-  }, 0)
-  return { channels, total }
-}
-
-// total profit all time
+// ─── TOTAL PROFIT (All Time) ─────────────────────────────────────────────
 export const fetchTotalProfit = async () => {
   const q = query(
     colRef(),
-    where('terminationType', '==', 'without_loss'),
-    orderBy('terminatedAt', 'desc')
+    where('status', 'in', ['sold', 'terminate_without_loss', 'terminate_with_loss', 'hacked'])
   )
   const snap = await getDocs(q)
   const channels = snap.docs.map(mapDoc)
-  const total = channels.reduce((sum, ch) => {
-    return sum + ((Number(ch.salePrice) || 0) - (Number(ch.purchasePrice) || 0))
-  }, 0)
-  return { channels, total }
+  
+  let total = 0
+  let soldProfit = 0
+  let terminateWithoutLossProfit = 0
+  let terminateWithLossLoss = 0
+  let hackedProfit = 0
+  
+  channels.forEach(ch => {
+    const purchase = Number(ch.purchasePrice) || 0
+    const sale = Number(ch.salePrice) || 0
+    
+    switch(ch.status) {
+      case 'sold':
+        const profit = sale - purchase
+        total += profit
+        soldProfit += profit
+        break
+        
+      case 'terminate_without_loss':
+        const termProfit = sale - purchase
+        total += termProfit
+        terminateWithoutLossProfit += termProfit
+        break
+        
+      case 'terminate_with_loss':
+        const loss = -purchase
+        total += loss
+        terminateWithLossLoss += loss
+        break
+        
+      case 'hacked':
+        // Sirf woh hacked channels jin ki sale hui thi
+       
+          const hackProfit =  - purchase
+          total += hackProfit
+          hackedProfit += hackProfit
+        
+        // Agar sale nahi hui to ignore
+        break
+    }
+  })
+  
+  return { 
+    total,
+    breakdown: {
+      sold: soldProfit,
+      terminateWithoutLoss: terminateWithoutLossProfit,
+      terminateWithLoss: terminateWithLossLoss,
+      hacked: hackedProfit
+    },
+    totalChannels: channels.length
+  }
 }
 
+// ─── THIS WEEK PROFIT ────────────────────────────────────────────────────
+export const fetchThisWeekProfit = async () => {
+  const startOfWeek = startOfThisWeek()
+  
+  const q = query(
+    colRef(),
+    where('status', 'in', ['sold', 'terminate_without_loss', 'terminate_with_loss', 'hacked']),
+    where('updatedAt', '>=', startOfWeek)
+  )
+  const snap = await getDocs(q)
+  const channels = snap.docs.map(mapDoc)
+  
+  let total = 0
+  let breakdown = {
+    sold: 0,
+    terminateWithoutLoss: 0,
+    terminateWithLoss: 0,
+    hacked: 0
+  }
+  
+  channels.forEach(ch => {
+    const purchase = Number(ch.purchasePrice) || 0
+    const sale = Number(ch.salePrice) || 0
+    
+    switch(ch.status) {
+      case 'sold':
+        const profit = sale - purchase
+        total += profit
+        breakdown.sold += profit
+        break
+        
+      case 'terminate_without_loss':
+        const termProfit = sale - purchase
+        total += termProfit
+        breakdown.terminateWithoutLoss += termProfit
+        break
+        
+      case 'terminate_with_loss':
+        const loss = -purchase
+        total += loss
+        breakdown.terminateWithLoss += loss
+        break
+        
+      case 'hacked':
+       
+          const hackProfit = - purchase
+          total += hackProfit
+          breakdown.hacked += hackProfit
+        
+        break
+    }
+  })
+  
+  return { total, breakdown, channels }
+}
+
+// ─── LAST MONTH PROFIT ───────────────────────────────────────────────────
+export const fetchLastMonthProfit = async () => {
+  const start = startOfLastMonth()
+  const end = endOfLastMonth()
+  
+  const q = query(
+    colRef(),
+    where('status', 'in', ['sold', 'terminate_without_loss', 'terminate_with_loss', 'hacked']),
+    where('updatedAt', '>=', start),
+    where('updatedAt', '<=', end)
+  )
+  const snap = await getDocs(q)
+  const channels = snap.docs.map(mapDoc)
+  
+  let total = 0
+  let breakdown = {
+    sold: 0,
+    terminateWithoutLoss: 0,
+    terminateWithLoss: 0,
+    hacked: 0
+  }
+  
+  channels.forEach(ch => {
+    const purchase = Number(ch.purchasePrice) || 0
+    const sale = Number(ch.salePrice) || 0
+    
+    switch(ch.status) {
+      case 'sold':
+        const profit = sale - purchase
+        total += profit
+        breakdown.sold += profit
+        break
+        
+      case 'terminate_without_loss':
+        const termProfit = sale - purchase
+        total += termProfit
+        breakdown.terminateWithoutLoss += termProfit
+        break
+        
+      case 'terminate_with_loss':
+        const loss = -purchase
+        total += loss
+        breakdown.terminateWithLoss += loss
+        break
+        
+      case 'hacked':
+      
+          const hackProfit =  - purchase
+          total += hackProfit
+          breakdown.hacked += hackProfit
+        
+        break
+    }
+  })
+  
+  return { total, breakdown, channels }
+}
+
+// ─── MONTHLY BREAKDOWN (Har month ka alag) ───────────────────────────────
+export const fetchMonthlyProfitLoss = async () => {
+  // Fetch ALL channels — no status filter, purchases bhi chahiye
+  const snap = await getDocs(query(colRef()))
+  const channels = snap.docs.map(mapDoc)
+ 
+  const monthlyData = {}
+ 
+  channels.forEach((ch) => {
+    // ── PURCHASES: har channel createdAt ke month mein count hoga ────────────
+    const createdDate = ch.createdAt?.toDate ? ch.createdAt.toDate() : null
+    if (createdDate) {
+      const key       = `${createdDate.getFullYear()}-${createdDate.getMonth() + 1}`
+      const monthName = createdDate.toLocaleString('default', { month: 'short', year: 'numeric' })
+ 
+      if (!monthlyData[key]) {
+        monthlyData[key] = {
+          month:               monthName,
+          year:                createdDate.getFullYear(),
+          monthNumber:         createdDate.getMonth() + 1,
+          sales:               0,
+          purchases:           0,
+          profit:              0,
+          soldCount:           0,
+          purchaseCount:       0,
+        }
+      }
+      monthlyData[key].purchases    += Number(ch.purchasePrice) || 0
+      monthlyData[key].purchaseCount += 1
+    }
+ 
+    // ── SALES + PROFIT: sirf completed channels ───────────────────────────────
+    const statusSet = new Set(['sold', 'terminate_without_loss', 'terminate_with_loss', 'hacked'])
+    if (!statusSet.has(ch.status)) return
+ 
+    // activity date: soldAt → terminatedAt → hackedAt → updatedAt
+    let activityDate = null
+    if (ch.soldAt)       activityDate = ch.soldAt.toDate()
+    else if (ch.terminatedAt) activityDate = ch.terminatedAt.toDate()
+    else if (ch.hackedAt)     activityDate = ch.hackedAt.toDate()
+    else if (ch.updatedAt)    activityDate = ch.updatedAt.toDate()
+    if (!activityDate) return
+ 
+    const key       = `${activityDate.getFullYear()}-${activityDate.getMonth() + 1}`
+    const monthName = activityDate.toLocaleString('default', { month: 'short', year: 'numeric' })
+ 
+    if (!monthlyData[key]) {
+      monthlyData[key] = {
+        month:         monthName,
+        year:          activityDate.getFullYear(),
+        monthNumber:   activityDate.getMonth() + 1,
+        sales:         0,
+        purchases:     0,
+        profit:        0,
+        soldCount:     0,
+        purchaseCount: 0,
+      }
+    }
+ 
+    const purchase = Number(ch.purchasePrice) || 0
+    const sale     = Number(ch.salePrice)     || 0
+ 
+    // Sales amount
+    if (['sold', 'terminate_without_loss'].includes(ch.status)) {
+      monthlyData[key].sales     += sale
+      monthlyData[key].soldCount += 1
+    }
+ 
+    // Profit calculation — same formula as fetchTotalProfit
+    switch (ch.status) {
+      case 'sold':
+      case 'terminate_without_loss': {
+        monthlyData[key].profit += sale - purchase
+        break
+      }
+      case 'terminate_with_loss': {
+        monthlyData[key].profit += -purchase
+        break
+      }
+    case 'hacked': {
+  monthlyData[key].profit +=  -purchase
+  break
+}
+      default: break
+    }
+  })
+ 
+  // Sort latest first
+  return Object.values(monthlyData).sort((a, b) => {
+    if (a.year !== b.year) return b.year - a.year
+    return b.monthNumber - a.monthNumber
+  })
+}
+
+// ─── ADD THESE HELPER FUNCTIONS ALSO ─────────────────────────────────────
+export const fetchTotalSales = async () => {
+  const q = query(
+    colRef(),
+    where('status', 'in', ['sold', 'terminate_without_loss'])
+  )
+  const snap = await getDocs(q)
+  const channels = snap.docs.map(mapDoc)
+  
+  const total = channels.reduce((sum, ch) => {
+    return sum + (Number(ch.salePrice) || 0)
+  }, 0)
+  
+  return total
+}
+
+export const fetchTotalPurchases = async () => {
+  const q = query(colRef())
+  const snap = await getDocs(q)
+  const channels = snap.docs.map(mapDoc)
+  
+  const total = channels.reduce((sum, ch) => {
+    return sum + (Number(ch.purchasePrice) || 0)
+  }, 0)
+  
+  return total
+}
+
+export const fetchChannelCounts = async () => {
+  const q = query(colRef())
+  const snap = await getDocs(q)
+  const channels = snap.docs.map(mapDoc)
+  
+  return {
+    total: channels.length,
+    sold: channels.filter(c => c.status === 'sold').length,
+    purchased: channels.filter(c => c.status === 'purchased').length,
+    terminatedWithLoss: channels.filter(c => c.status === 'terminate_with_loss').length,
+    terminatedWithoutLoss: channels.filter(c => c.status === 'terminate_without_loss').length,
+    hacked: channels.filter(c => c.status === 'hacked').length
+  }
+}
+
+// ─── CURRENT MONTH SALES ─────────────────────────────────────────────────────
+
+export const fetchCurrentMonthSales = async () => {
+  const q = query(colRef(), orderBy('createdAt', 'desc'))
+  const snap = await getDocs(q)
+  return snap.docs.map(mapDoc)
+}
+
+export const fetchCurrentMonthPurchases = async () => {
+  const q = query(colRef(), orderBy('createdAt', 'desc'))
+  const snap = await getDocs(q)
+  return snap.docs.map(mapDoc)
+}
+
+export const fetchCurrentMonthProfit = async () => {
+  const q = query(colRef(), orderBy('createdAt', 'desc'))
+  const snap = await getDocs(q)
+  return snap.docs.map(mapDoc)
+}
 // ─── WRITE operations ─────────────────────────────────────────────────────────
 
 // add new channel — status always 'purchased', ownerShip always false

@@ -601,8 +601,8 @@ export default function Sales() {
             ${activeFilters > 0 ? "!border-emerald-400 dark:!border-emerald-600" : ""}`}
         >
           {filtersOpen
-            ? <><ChevronUp size={14}/><span className="text-gray-600 dark:text-gray-300">Hide Filters</span></>
-            : <><SlidersHorizontal size={14}/><span className="text-gray-600 dark:text-gray-300">Filters</span></>}
+            ? <><ChevronUp className="text-gray-600  dark:text-gray-300" size={14}/><span className="text-gray-600 dark:text-gray-300">Hide Filters</span></>
+            : <><SlidersHorizontal className="text-gray-600  dark:text-gray-300" size={14}/><span className="text-gray-600 dark:text-gray-300">Filters</span></>}
           {activeFilters > 0 && (
             <span className="w-4 h-4 rounded-full bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center ml-0.5">
               {activeFilters}

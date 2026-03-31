@@ -21,6 +21,9 @@ import {
   transferOwnership,
   returnChannel,
   hackChannel,
+  fetchChannelCounts,
+  fetchTotalPurchases, fetchTotalSales, fetchMonthlyProfitLoss, fetchCurrentMonthSales, fetchCurrentMonthPurchases, fetchCurrentMonthProfit
+  
 } from '../services/channel.services'
 
 // ─── query keys ──────────────────────────────────────────────────────────────
@@ -118,23 +121,56 @@ export const useChannel = (id) =>
   })
 
 // ─── PROFIT hooks ─────────────────────────────────────────────────────────────
+// ─── PROFIT & STATS HOOKS (SIMPLE) ─────────────────────────────────────────
 
-export const useThisWeekProfit = () =>
-  useQuery({
-    queryKey: channelKeys.profit.thisWeek(),
-    queryFn:  fetchThisWeekProfit,
-  })
-
-export const useLastMonthProfit = () =>
-  useQuery({
-    queryKey: channelKeys.profit.lastMonth(),
-    queryFn:  fetchLastMonthProfit,
-  })
-
+// Total Profit Hook
 export const useTotalProfit = () =>
   useQuery({
-    queryKey: channelKeys.profit.total(),
-    queryFn:  fetchTotalProfit,
+    queryKey: ['channels', 'total-profit'],
+    queryFn: fetchTotalProfit,
+  })
+
+// This Week Profit Hook
+export const useThisWeekProfit = () =>
+  useQuery({
+    queryKey: ['channels', 'this-week-profit'],
+    queryFn: fetchThisWeekProfit,
+  })
+
+// Last Month Profit Hook
+export const useLastMonthProfit = () =>
+  useQuery({
+    queryKey: ['channels', 'last-month-profit'],
+    queryFn: fetchLastMonthProfit,
+  })
+
+// Monthly Profit/Loss Hook
+export const useMonthlyProfitLoss = () =>
+  useQuery({
+    queryKey: ['channels', 'monthly-profit-loss'],
+    queryFn: fetchMonthlyProfitLoss,
+    
+  })
+
+// Total Sales Hook
+export const useTotalSales = () =>
+  useQuery({
+    queryKey: ['channels', 'total-sales'],
+    queryFn: fetchTotalSales,
+  })
+
+// Total Purchases Hook
+export const useTotalPurchases = () =>
+  useQuery({
+    queryKey: ['channels', 'total-purchases'],
+    queryFn: fetchTotalPurchases,
+  })
+
+// Channel Counts Hook
+export const useChannelCounts = () =>
+  useQuery({
+    queryKey: ['channels', 'counts'],
+    queryFn: fetchChannelCounts,
   })
 
 // ─── MUTATION hooks ───────────────────────────────────────────────────────────
@@ -445,3 +481,85 @@ export const useTransferOwnership = () => {
   })
 }
 
+// ── Helper: local month/year check (UTC-safe) ─────────────────────────────
+const isThisMonth = (tsOrDate) => {
+  if (!tsOrDate) return false
+  const d = typeof tsOrDate.toDate === 'function' ? tsOrDate.toDate() : new Date(tsOrDate)
+  if (isNaN(d.getTime())) return false
+  const now = new Date()
+  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+}
+
+export const useCurrentMonthSales = () =>
+  useQuery({
+    queryKey: channelKeys.all(),
+    queryFn:  fetchAllChannels,
+    staleTime: 2 * 60 * 1000,
+    gcTime:    10 * 60 * 1000,
+    select: (channels) => {
+      const relevant = channels.filter((ch) => {
+        if (!['sold', 'terminate_without_loss'].includes(ch.status)) return false
+        return isThisMonth(ch.soldAt ?? ch.updatedAt)
+      })
+      return {
+        total: relevant.reduce((sum, ch) => sum + (Number(ch.salePrice) || 0), 0),
+        count: relevant.length,
+      }
+    },
+  })
+
+export const useCurrentMonthPurchases = () =>
+  useQuery({
+    queryKey: channelKeys.all(),
+    queryFn:  fetchAllChannels,
+    staleTime: 2 * 60 * 1000,
+    gcTime:    10 * 60 * 1000,
+    select: (channels) => {
+      const relevant = channels.filter((ch) => isThisMonth(ch.createdAt))
+      return {
+        total: relevant.reduce((sum, ch) => sum + (Number(ch.purchasePrice) || 0), 0),
+        count: relevant.length,
+      }
+    },
+  })
+
+export const useCurrentMonthProfit = () =>
+  useQuery({
+    queryKey: channelKeys.all(),
+    queryFn:  fetchAllChannels,
+    staleTime: 2 * 60 * 1000,
+    gcTime:    10 * 60 * 1000,
+    select: (channels) => {
+      const statusSet = new Set(['sold', 'terminate_without_loss', 'terminate_with_loss', 'hacked'])
+      const relevant  = channels.filter((ch) => {
+        if (!statusSet.has(ch.status)) return false
+        const date = ch.soldAt ?? ch.terminatedAt ?? ch.hackedAt ?? ch.updatedAt ?? ch.createdAt
+        return isThisMonth(date)
+      })
+
+      let total = 0
+      const breakdown = { sold: 0, terminateWithoutLoss: 0, terminateWithLoss: 0, hacked: 0 }
+
+      relevant.forEach((ch) => {
+        const purchase = Number(ch.purchasePrice) || 0
+        const sale     = Number(ch.salePrice)     || 0
+        switch (ch.status) {
+          case 'sold': {
+            const p = sale - purchase; total += p; breakdown.sold += p; break
+          }
+          case 'terminate_without_loss': {
+            const p = sale - purchase; total += p; breakdown.terminateWithoutLoss += p; break
+          }
+          case 'terminate_with_loss': {
+            const l = -purchase; total += l; breakdown.terminateWithLoss += l; break
+          }
+          case 'hacked': {
+         const p =  - purchase; total += p; breakdown.hacked += p 
+            break
+          }
+          default: break
+        }
+      })
+      return { total, breakdown, count: relevant.length }
+    },
+  })
