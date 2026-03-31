@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Link, Eye, EyeOff, User } from "lucide-react";
-
+import { useUpdateChannel } from "../hooks/useChannels";
+import toast from "react-hot-toast";
+import { Loader2 } from "lucide-react";
 const CATEGORIES = ["Gaming","Tech","Food","Sports","Lifestyle","Religion","Education","Entertainment","Finance","Other"];
 const STATUSES   = ["available","sold","hacked","pending"];
 const VIOLATIONS = ["None","Strike","Community Guidelines","Copyright"];
@@ -23,9 +25,9 @@ function channelToForm(ch) {
   if (!ch) return {
     channelName:"",channelUrl:"",brandName:"",category:"",niche:"",
     contentType:"",subscribers:"",totalVideos:"",views:"",realtimeViews:"",
-    watchTime:"",channelAge:"",monetizationStatus:"",earningPerMonth:"",
+    watchTime:"",channelAge:"",monetizationStatus:"",earningData:"",
     verificationStatus:"",violation:"None",ownershipTransfer:false,
-    channelEmail:"",channelPassword:"",primaryMail:"",
+    channelEmail:"",channelPassword:"",primaryEmail:"",
     purchasePrice:"",salePrice:"",status:"",
   };
   return {
@@ -42,7 +44,7 @@ function channelToForm(ch) {
     watchTime: ch.watchTime != null ? String(ch.watchTime) : "",
     channelAge: ch.channelAge || "",
     monetizationStatus: ch.monetizationStatus || "",
-    earningPerMonth: ch.earningPerMonth != null ? String(ch.earningPerMonth) : "",
+    earningData: ch.earningData != null ? String(ch.earningData) : "",
     verificationStatus: typeof ch.verificationStatus === "boolean"
       ? (ch.verificationStatus ? "Verified" : "Not Verified")
       : (ch.verificationStatus || ""),
@@ -50,7 +52,7 @@ function channelToForm(ch) {
     ownershipTransfer: ch.ownershipTransfer || false,
     channelEmail: ch.channelEmail || "",
     channelPassword: ch.channelPassword || "",
-    primaryMail: ch.primaryMail || "",
+    primaryEmail: ch.primaryEmail || "",
     purchasePrice: ch.purchasePrice != null ? String(ch.purchasePrice) : "",
     sellerName: ch.sellerName || "",
     salePrice: ch.salePrice != null ? String(ch.salePrice) : "",
@@ -82,6 +84,7 @@ function Field({ label, required, error, children }) {
 const REQUIRED = ["channelName","category","monetizationStatus","channelEmail","channelPassword","purchasePrice","status"];
 
 export default function EditChannelDrawer({ channel, open, onClose, onSave }) {
+  const { mutate: updateChannel, isPending, isSuccess, isError, error } = useUpdateChannel();
   const [form, setForm]         = useState(() => channelToForm(channel));
   const [errors, setErrors]     = useState({});
   const [showPass, setShowPass] = useState(false);
@@ -99,7 +102,18 @@ export default function EditChannelDrawer({ channel, open, onClose, onSave }) {
       setLastSaved(null);
     }
   }, [channel]);
+useEffect(() => {
+  if (isSuccess) {
+    toast.success("Channel updated successfully!");
+    handleCancel();
+  }
+}, [isSuccess]);
 
+useEffect(() => {
+  if (isError) {
+    toast.error(error?.message || "Failed to update channel");
+  }
+}, [isError]);
   const set = (key, val) => {
     setForm(f => ({ ...f, [key]: val }));
     if (errors[key]) setErrors(e => ({ ...e, [key]: "" }));
@@ -146,20 +160,34 @@ export default function EditChannelDrawer({ channel, open, onClose, onSave }) {
   };
 
   const handleSave = () => {
-    if (!validate()) return;
-    const updated = {
-      ...channel,
-      ...form,
-      channelNiche: form.niche,
-      channelSubscribers: Number(form.subscribers) || form.subscribers,
-      verificationStatus: form.verificationStatus === "Verified",
-      purchasePrice: Number(form.purchasePrice),
-      salePrice: Number(form.salePrice),
-    };
-    console.log("Updated channel:", updated);
-    onSave(updated);
-    setLastSaved(new Date());
+  if (!validate()) return;
+
+  const payload = {
+    channelName:        form.channelName,
+    channelUrl:         form.channelUrl,
+    brandName:          form.brandName,
+    channelNiche:       form.niche,
+    contentType:        form.contentType,
+    channelSubscribers: form.subscribers,
+    totalVideos:        form.totalVideos,
+    views:              form.views,
+    realtimeViews:      form.realtimeViews,
+    watchTime:          Number(form.watchTime) || 0,
+    channelAge:         form.channelAge,
+    monetizationStatus: form.monetizationStatus,
+    earningData:        Number(form.earningData) || 0,
+    verificationStatus: form.verificationStatus,
+    violation:          form.violation,
+    ownerShip:          form.ownershipTransfer,
+    channelEmail:       form.channelEmail,
+    channelPassword:    form.channelPassword,
+    purchasePrice:      Number(form.purchasePrice) || 0,
+    salePrice:          Number(form.salePrice) || 0,
+    status:             form.status,
   };
+
+  updateChannel({ id: channel.id, data: payload });
+};
 
   const handleCancel = useCallback(() => {
     onClose();
@@ -243,8 +271,8 @@ export default function EditChannelDrawer({ channel, open, onClose, onSave }) {
                     <option>Monetized</option><option>Not Monetized</option><option>Pending</option>
                   </select>
                 </Field>
-                <Field label="Earning per Month (Rs)" error={errors.earningPerMonth}>
-                  <input ref={setRef(13)} type="number" value={form.earningPerMonth} onChange={e=>set("earningPerMonth",e.target.value)} onKeyDown={kd(13)} placeholder="e.g. 15000" className={inputCls}/>
+                <Field label="Earning per Month (Rs)" error={errors.earningData}>
+                  <input ref={setRef(13)} type="number" value={form.earningData} onChange={e=>set("earningData",e.target.value)} onKeyDown={kd(13)} placeholder="e.g. 15000" className={inputCls}/>
                 </Field>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Verification" error={errors.verificationStatus}>
@@ -280,8 +308,8 @@ export default function EditChannelDrawer({ channel, open, onClose, onSave }) {
                     <button type="button" onClick={()=>setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 hover:text-gray-500 transition">{showPass?<EyeOff size={14}/>:<Eye size={14}/>}</button>
                   </div>
                 </Field>
-                <Field label="Primary Mail" error={errors.primaryMail}>
-                  <input ref={setRef(19)} type="email" value={form.primaryMail} onChange={e=>set("primaryMail",e.target.value)} onKeyDown={kd(19)} placeholder="owner@gmail.com" className={inputCls}/>
+                <Field label="Primary Mail" error={errors.primaryEmail}>
+                  <input ref={setRef(19)} type="email" value={form.primaryEmail} onChange={e=>set("primaryMail",e.target.value)} onKeyDown={kd(19)} placeholder="owner@gmail.com" className={inputCls}/>
                 </Field>
               </div>
             </motion.div>
@@ -301,12 +329,12 @@ export default function EditChannelDrawer({ channel, open, onClose, onSave }) {
                 <Field label="Sale Price (Rs)" error={errors.salePrice}>
                   <input ref={setRef(22)} type="number" value={form.salePrice} onChange={e=>set("salePrice",e.target.value)} onKeyDown={kd(22)} placeholder="e.g. 380000" className={inputCls}/>
                 </Field>
-                <Field label="Status" required error={errors.status}>
+                {/* <Field label="Status" required error={errors.status}>
                   <select ref={setRef(23)} value={form.status} onChange={e=>set("status",e.target.value)} onKeyDown={kd(23,true)} className={selectCls}>
                     <option value="">Select status</option>
                     {STATUSES.map(s=><option key={s}>{s}</option>)}
                   </select>
-                </Field>
+                </Field> */}
               </div>
             </motion.div>
 
@@ -318,7 +346,21 @@ export default function EditChannelDrawer({ channel, open, onClose, onSave }) {
             {lastSaved && <p className="text-[10px] text-center text-blue-400 mb-2">✓ Last saved just now</p>}
             <div className="flex gap-3">
               <button onClick={handleCancel} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">Cancel</button>
-              <button id="edit-submit-btn" onClick={handleSave} className="flex-1 px-4 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold shadow-sm transition active:scale-95">Save Changes</button>
+         <button
+  id="edit-submit-btn"
+  onClick={handleSave}
+  disabled={isPending}
+  className="flex-1 px-4 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold shadow-sm transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+>
+  {isPending ? (
+    <>
+      <Loader2 size={14} className="animate-spin" />
+      Saving...
+    </>
+  ) : (
+    "Save Changes"
+  )}
+</button>
             </div>
           </div>
         </motion.div>

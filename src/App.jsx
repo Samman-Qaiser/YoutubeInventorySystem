@@ -8,8 +8,11 @@ import Channels from "./pages/Channels";
 import Purchases from "./pages/Purchases";
 import Sales from "./pages/Sales";
 import Login from "./pages/Login";
-import { channelsData } from "./constants/data";
+import { Toaster } from "react-hot-toast";
 
+import { QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { queryClient } from "./lib/queryClient";
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     return localStorage.getItem("abbasstock_auth") === "true";
@@ -18,8 +21,7 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // ── Global channels state (shared between Channels & Purchases pages) ──────
-  const [channels, setChannels] = useState([...channelsData]);
+
 
   const handleLogin = () => {
     localStorage.setItem("abbasstock_auth", "true");
@@ -40,9 +42,12 @@ export default function App() {
   }
 
   return (
+        <QueryClientProvider client={queryClient}>
     <div className={darkMode ? "dark" : ""}>
+    
       <BrowserRouter>
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300 flex flex-col">
+        <Toaster position="top-right" />
           <Navbar
             collapsed={collapsed}
             setCollapsed={setCollapsed}
@@ -64,9 +69,9 @@ export default function App() {
             <div className="p-6 flex-1">
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/channels"  element={<Channels  channels={channels} setChannels={setChannels} />} />
-                <Route path="/purchases" element={<Purchases channels={channels} setChannels={setChannels} />} />
-                <Route path="/sales"     element={<Sales     channels={channels} setChannels={setChannels} />} />
+<Route path="/channels"  element={<Channels />} />
+<Route path="/purchases" element={<Purchases />} />
+<Route path="/sales"     element={<Sales />} />
                 <Route path="*"         element={<Navigate to="/" replace />} />
               </Routes>
             </div>
@@ -75,5 +80,7 @@ export default function App() {
         </div>
       </BrowserRouter>
     </div>
+          <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
   );
 }

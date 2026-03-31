@@ -170,59 +170,120 @@ export default function ViewChannelDrawer({ channel:ch, open, onClose, onEdit })
         >
 
           {/* ── HERO BANNER ────────────────────────────────────── */}
-          <div className={`relative h-20 shrink-0 bg-gradient-to-br ${banner}`}>
+<div className="relative h-28 shrink-0 overflow-visible">
 
-            {/* Avatar — half outside */}
-            <div className="absolute bottom-0 left-5 translate-y-1/2 w-16 h-16 rounded-2xl bg-white shadow-lg flex items-center justify-center z-10">
-              <span className={`text-xl font-bold ${avatarText}`}>{getInitials(ch.channelName)}</span>
-            </div>
+  {/* Banner */}
+  {ch.bannerUrl ? (
+    <img
+      src={ch.bannerUrl}
+      alt="banner"
+      className="absolute inset-0 w-full h-full object-cover"
+    />
+  ) : (
+    <div className={`absolute inset-0 bg-gradient-to-br ${banner}`} />
+  )}
 
-            {/* Top-right controls */}
-            <div className="absolute top-3 right-3 flex items-center gap-1.5">
-              {/* Share */}
-              <div className="relative" ref={shareRef}>
-                <button
-                  onClick={()=>setShareOpen(!shareOpen)}
-                  className="w-8 h-8 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white flex items-center justify-center transition"
-                >
-                  <Share2 size={15}/>
-                </button>
+  {/* Overlay (optional) */}
+  <div className="absolute inset-0 bg-black/10" />
 
-                <AnimatePresence>
-                  {shareOpen && (
-                    <motion.div
-                      key="share-pop"
-                      initial={{opacity:0, scale:0.9, y:-4}}
-                      animate={{opacity:1, scale:1, y:0}}
-                      exit={{opacity:0, scale:0.9, y:-4}}
-                      transition={{duration:0.15}}
-                      className="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl z-20 overflow-hidden p-1"
-                    >
-                      {[
-                        { icon:Copy, label:"Copy Link", action:()=>{ navigator.clipboard.writeText(ch.channelUrl||""); setShareOpen(false); }, color:"text-gray-600 dark:text-gray-300" },
-                        { icon:ExternalLink, label:"Open in Browser", action:()=>{ window.open(`https://${ch.channelUrl}`,"_blank"); setShareOpen(false); }, color:"text-gray-600 dark:text-gray-300" },
-                        { icon:MessageCircle, label:"Share on WhatsApp", action:()=>{ window.open(`https://wa.me/?text=${encodeURIComponent((ch.channelName||"")+" — "+(ch.channelUrl||""))}`,"_blank"); setShareOpen(false); }, color:"text-emerald-600 dark:text-emerald-400" },
-                      ].map(({icon:Icon, label, action, color})=>(
-                        <button key={label} onClick={action}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-                        >
-                          <Icon size={13} className={color}/> <span className={color}>{label}</span>
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+  {/* Avatar */}
+  <div className="absolute -bottom-8 left-5 w-16 h-16 rounded-2xl bg-white shadow-lg flex items-center justify-center z-20 overflow-hidden border-2 border-white dark:border-[#111322]">
+    
+    {ch.channelProfile ? (
+      <img
+        src={ch.channelProfile}
+        alt="profile"
+        className="w-full h-full object-cover"
+      />
+    ) : (
+      <span className={`text-xl font-bold ${avatarText}`}>
+        {getInitials(ch.channelName)}
+      </span>
+    )}
 
-              {/* Close */}
+  </div>
+
+  {/* Top-right controls */}
+  <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
+
+    {/* Share */}
+    <div className="relative" ref={shareRef}>
+      <button
+        onClick={() => setShareOpen(!shareOpen)}
+        className="w-8 h-8 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white flex items-center justify-center transition"
+      >
+        <Share2 size={15} />
+      </button>
+
+      <AnimatePresence>
+        {shareOpen && (
+          <motion.div
+            key="share-pop"
+            initial={{ opacity: 0, scale: 0.9, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: -4 }}
+            transition={{ duration: 0.15 }}
+            className="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl z-30 overflow-hidden p-1"
+          >
+            {[
+              {
+                icon: Copy,
+                label: "Copy Link",
+                action: () => {
+                  navigator.clipboard.writeText(ch.channelUrl || "");
+                  setShareOpen(false);
+                },
+                color: "text-gray-600 dark:text-gray-300",
+              },
+              {
+                icon: ExternalLink,
+                label: "Open in Browser",
+                action: () => {
+                  window.open(`https://${ch.channelUrl}`, "_blank");
+                  setShareOpen(false);
+                },
+                color: "text-gray-600 dark:text-gray-300",
+              },
+              {
+                icon: MessageCircle,
+                label: "Share on WhatsApp",
+                action: () => {
+                  window.open(
+                    `https://wa.me/?text=${encodeURIComponent(
+                      (ch.channelName || "") +
+                        " — " +
+                        (ch.channelUrl || "")
+                    )}`,
+                    "_blank"
+                  );
+                  setShareOpen(false);
+                },
+                color: "text-emerald-600 dark:text-emerald-400",
+              },
+            ].map(({ icon: Icon, label, action, color }) => (
               <button
-                onClick={onClose}
-                className="w-8 h-8 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white flex items-center justify-center transition"
+                key={label}
+                onClick={action}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition"
               >
-                <X size={16}/>
+                <Icon size={13} className={color} />
+                <span className={color}>{label}</span>
               </button>
-            </div>
-          </div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+
+    {/* Close */}
+    <button
+      onClick={onClose}
+      className="w-8 h-8 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white flex items-center justify-center transition"
+    >
+      <X size={16} />
+    </button>
+  </div>
+</div>
 
           {/* ── CHANNEL IDENTITY ─── (below banner, clear avatar) */}
           <motion.div custom={0} variants={secVar} initial="hidden" animate="visible"
@@ -293,7 +354,7 @@ export default function ViewChannelDrawer({ channel:ch, open, onClose, onEdit })
                 <div className="text-right">
                   <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Earning / Month</p>
                   <p className={`text-2xl font-bold ${ch.earningPerMonth?"text-emerald-500":"text-gray-300 dark:text-gray-600"}`}>
-                    {ch.earningPerMonth ? `Rs ${Number(ch.earningPerMonth).toLocaleString()}` : "—"}
+                    ${ch.earningData }
                   </p>
                 </div>
               </div>
@@ -306,7 +367,7 @@ export default function ViewChannelDrawer({ channel:ch, open, onClose, onEdit })
               <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Account Details</p>
               <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl px-4">
                 <CredRow Icon={Mail}  label="Channel Email" value={ch.channelEmail} fieldKey="email"    copied={copied} onCopy={copy}/>
-                <CredRow Icon={Mail}  label="Primary Mail"  value={ch.primaryMail}  fieldKey="primary"  copied={copied} onCopy={copy}/>
+                <CredRow Icon={Mail}  label="Primary Mail"  value={ch.primaryEmail}  fieldKey="primary"  copied={copied} onCopy={copy}/>
                 <CredRow Icon={Lock}  label="Password"      value={ch.channelPassword} fieldKey="pass" copied={copied} onCopy={copy}
                   isPassword showVal={showPass} onToggle={()=>setShowPass(!showPass)}/>
               </div>
