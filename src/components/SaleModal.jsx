@@ -152,10 +152,10 @@ export default function SaleModal({ channel, open, onClose, onConfirm, isLoading
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 pointer-events-none">
-                      Rs
+                      $
                     </span>
                     <input
-                      type="number"
+                      type="text"
                       value={salePrice}
                       onChange={(e) => {
                         setSalePrice(e.target.value);

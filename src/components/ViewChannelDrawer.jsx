@@ -381,15 +381,15 @@ export default function ViewChannelDrawer({ channel:ch, open, onClose, onEdit })
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-blue-50 dark:bg-blue-900/15 rounded-2xl p-3 text-center">
                   <p className="text-[10px] text-blue-400 font-semibold uppercase tracking-wide mb-1.5">Buy</p>
-                  <p className="text-base font-bold text-blue-600 dark:text-blue-400">{fmtRs(ch.purchasePrice)}</p>
+                  <p className="text-base font-bold text-blue-600 dark:text-blue-400">${ch.purchasePrice}</p>
                 </div>
                 <div className="bg-emerald-50 dark:bg-emerald-900/15 rounded-2xl p-3 text-center">
                   <p className="text-[10px] text-emerald-400 font-semibold uppercase tracking-wide mb-1.5">Sale</p>
-                  <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">{fmtRs(ch.salePrice)}</p>
+                  <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">${ch.salePrice}</p>
                 </div>
                 <div className={`rounded-2xl p-3 text-center ${profit>=0?"bg-violet-50 dark:bg-violet-900/15":"bg-red-50 dark:bg-red-900/15"}`}>
                   <p className={`text-[10px] font-semibold uppercase tracking-wide mb-1.5 ${profit>=0?"text-violet-400":"text-red-400"}`}>Profit</p>
-                  <p className={`text-base font-bold ${profit>=0?"text-violet-600 dark:text-violet-400":"text-red-600 dark:text-red-400"}`}>{fmtRs(profit)}</p>
+                  <p className={`text-base font-bold ${profit>=0?"text-violet-600 dark:text-violet-400":"text-red-600 dark:text-red-400"}`}>${profit}</p>
                 </div>
               </div>
               {/* Seller row */}

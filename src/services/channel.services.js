@@ -223,7 +223,7 @@ export const fetchChannelById = async (id) => {
 export const fetchTotalProfit = async () => {
   const q = query(
     colRef(),
-    where('status', 'in', ['sold', 'terminate_without_loss', 'terminate_with_loss', 'hacked'])
+    where('status', 'in', ['sold', 'terminatewithoutloss', 'terminatewithloss', 'hacked'])
   )
   const snap = await getDocs(q)
   const channels = snap.docs.map(mapDoc)
@@ -244,14 +244,9 @@ export const fetchTotalProfit = async () => {
         total += profit
         soldProfit += profit
         break
+   
         
-      case 'terminate_without_loss':
-        const termProfit = sale - purchase
-        total += termProfit
-        terminateWithoutLossProfit += termProfit
-        break
-        
-      case 'terminate_with_loss':
+      case 'terminatewithloss':
         const loss = -purchase
         total += loss
         terminateWithLossLoss += loss
@@ -287,7 +282,7 @@ export const fetchThisWeekProfit = async () => {
   
   const q = query(
     colRef(),
-    where('status', 'in', ['sold', 'terminate_without_loss', 'terminate_with_loss', 'hacked']),
+    where('status', 'in', ['sold', 'terminatewithoutloss', 'terminatewithloss', 'hacked']),
     where('updatedAt', '>=', startOfWeek)
   )
   const snap = await getDocs(q)
@@ -312,13 +307,13 @@ export const fetchThisWeekProfit = async () => {
         breakdown.sold += profit
         break
         
-      case 'terminate_without_loss':
+      case 'terminatewithoutloss':
         const termProfit = sale - purchase
         total += termProfit
         breakdown.terminateWithoutLoss += termProfit
         break
         
-      case 'terminate_with_loss':
+      case 'terminatewithloss':
         const loss = -purchase
         total += loss
         breakdown.terminateWithLoss += loss
@@ -344,7 +339,7 @@ export const fetchLastMonthProfit = async () => {
   
   const q = query(
     colRef(),
-    where('status', 'in', ['sold', 'terminate_without_loss', 'terminate_with_loss', 'hacked']),
+    where('status', 'in', ['sold', 'terminatewithoutloss', 'terminatewithloss', 'hacked']),
     where('updatedAt', '>=', start),
     where('updatedAt', '<=', end)
   )
@@ -370,13 +365,13 @@ export const fetchLastMonthProfit = async () => {
         breakdown.sold += profit
         break
         
-      case 'terminate_without_loss':
+      case 'terminatewithoutloss':
         const termProfit = sale - purchase
         total += termProfit
         breakdown.terminateWithoutLoss += termProfit
         break
         
-      case 'terminate_with_loss':
+      case 'terminatewithloss':
         const loss = -purchase
         total += loss
         breakdown.terminateWithLoss += loss
@@ -427,7 +422,7 @@ export const fetchMonthlyProfitLoss = async () => {
     }
  
     // ── SALES + PROFIT: sirf completed channels ───────────────────────────────
-    const statusSet = new Set(['sold', 'terminate_without_loss', 'terminate_with_loss', 'hacked'])
+    const statusSet = new Set(['sold', 'terminatewithloss', 'hacked'])  // ✅ removed terminatewithoutloss
     if (!statusSet.has(ch.status)) return
  
     // activity date: soldAt → terminatedAt → hackedAt → updatedAt
@@ -457,27 +452,26 @@ export const fetchMonthlyProfitLoss = async () => {
     const purchase = Number(ch.purchasePrice) || 0
     const sale     = Number(ch.salePrice)     || 0
  
-    // Sales amount
-    if (['sold', 'terminate_without_loss'].includes(ch.status)) {
+    // Sales amount (only for sold channels)
+    if (ch.status === 'sold') {
       monthlyData[key].sales     += sale
       monthlyData[key].soldCount += 1
     }
  
-    // Profit calculation — same formula as fetchTotalProfit
+    // Profit calculation — terminatewithoutloss IGNORED
     switch (ch.status) {
-      case 'sold':
-      case 'terminate_without_loss': {
+      case 'sold': {
         monthlyData[key].profit += sale - purchase
         break
       }
-      case 'terminate_with_loss': {
+      case 'terminatewithloss': {
         monthlyData[key].profit += -purchase
         break
       }
-    case 'hacked': {
-  monthlyData[key].profit +=  -purchase
-  break
-}
+      case 'hacked': {
+        monthlyData[key].profit += -purchase
+        break
+      }
       default: break
     }
   })
@@ -488,12 +482,11 @@ export const fetchMonthlyProfitLoss = async () => {
     return b.monthNumber - a.monthNumber
   })
 }
-
 // ─── ADD THESE HELPER FUNCTIONS ALSO ─────────────────────────────────────
 export const fetchTotalSales = async () => {
   const q = query(
     colRef(),
-    where('status', 'in', ['sold', 'terminate_without_loss'])
+    where('status', 'in', ['sold'])
   )
   const snap = await getDocs(q)
   const channels = snap.docs.map(mapDoc)
@@ -526,8 +519,8 @@ export const fetchChannelCounts = async () => {
     total: channels.length,
     sold: channels.filter(c => c.status === 'sold').length,
     purchased: channels.filter(c => c.status === 'purchased').length,
-    terminatedWithLoss: channels.filter(c => c.status === 'terminate_with_loss').length,
-    terminatedWithoutLoss: channels.filter(c => c.status === 'terminate_without_loss').length,
+    terminatedWithLoss: channels.filter(c => c.status === 'terminatewithloss').length,
+    terminatedWithoutLoss: channels.filter(c => c.status === 'terminatewithoutloss').length,
     hacked: channels.filter(c => c.status === 'hacked').length
   }
 }
@@ -560,8 +553,6 @@ export const createChannel = async (data) => {
     ...data,
     status:          'purchased',
     ownerShip:       false,
-    terminationType: null,
-    terminatedAt:    null,
     createdAt:       serverTimestamp(),
   }
   const docRef = await addDoc(colRef(), payload)
@@ -570,7 +561,7 @@ export const createChannel = async (data) => {
   const txColRef = collection(db, 'transactions')
   await addDoc(txColRef, {
     channelId:      docRef.id,
-    purchaseOrSale: 'purchase',
+    purchaseOrSale: 'purchased',
     price:          Number(data.purchasePrice) || 0,
     sellerName:     data.sellerName            || '',
     contactNumber:  data.contactNumber         || '',
@@ -656,14 +647,14 @@ export const terminateWithLoss = async (id, channelData) => {
 
   // Only update the status — don't include terminateAt or terminateType
   await updateDoc(ref, {
-    status: 'terminate_with_loss',
+    status: 'terminatewithloss',
     updatedAt: serverTimestamp(), // optional
   })
 
   await addDoc(collection(db, 'transactions'), {
     channelId:      id,
     channelName:    channelData.channelName || '',
-    purchaseOrSale: 'terminate_with_loss',
+    purchaseOrSale: 'terminatewithloss',
     price:          Number(channelData.purchasePrice) || 0,
     sellerName:     channelData.sellerName || '',
     contactNumber:  channelData.contactNumber || '',
@@ -675,14 +666,14 @@ export const terminateWithoutLoss = async (id, channelData) => {
   const ref = doc(db, COL, id)
 
   await updateDoc(ref, {
-    status: 'terminate_without_loss',
+    status: 'terminatewithoutloss',
     updatedAt: serverTimestamp(), // optional
   })
 
   await addDoc(collection(db, 'transactions'), {
     channelId:      id,
     channelName:    channelData.channelName || '',
-    purchaseOrSale: 'terminate_without_loss',
+    purchaseOrSale: 'terminatewithoutloss',
     price:          Number(channelData.salePrice) || 0,
     sellerName:     channelData.sellerName || '',
     contactNumber:  channelData.contactNumber || '',

@@ -25,7 +25,10 @@ import {
   fetchTotalPurchases, fetchTotalSales, fetchMonthlyProfitLoss, fetchCurrentMonthSales, fetchCurrentMonthPurchases, fetchCurrentMonthProfit
   
 } from '../services/channel.services'
-
+// useChannels.js ke top pe existing imports mein add karo:
+import { useState, useEffect ,useMemo} from "react";
+import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
+import { db } from "../config/firebase";
 // ─── query keys ──────────────────────────────────────────────────────────────
 // centralized — ek jagah se invalidate hoga sab
 
@@ -46,11 +49,36 @@ export const channelKeys = {
 
 // ─── READ hooks ───────────────────────────────────────────────────────────────
 
-export const useAllChannels = () =>
-  useQuery({
-    queryKey: channelKeys.all(),
-    queryFn:  fetchAllChannels,
-  })
+export const useAllChannels = () => {
+  const [data, setData]       = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError]     = useState(null);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'channels'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setData(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setIsLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.error('useAllChannels snapshot error:', err);
+        setError(err);
+        setIsLoading(false);
+      }
+    );
+
+    return () => unsub(); // cleanup on unmount
+  }, []);
+
+  return { data, isLoading, error };
+};
 
 export const usePurchasedChannels = () =>
   useQuery({
@@ -145,12 +173,82 @@ export const useLastMonthProfit = () =>
   })
 
 // Monthly Profit/Loss Hook
-export const useMonthlyProfitLoss = () =>
-  useQuery({
-    queryKey: ['channels', 'monthly-profit-loss'],
-    queryFn: fetchMonthlyProfitLoss,
-    
-  })
+export const useMonthlyProfitLoss = () => {
+  const { data: channels = [], isLoading, error } = useAllChannels()
+
+  const monthlyData = useMemo(() => {
+    if (!channels.length) return []
+
+    const result = {}
+
+    channels.forEach((ch) => {
+      // ── PURCHASES: createdAt ke month mein ──────────────────────────────
+      const createdDate = ch.createdAt?.toDate ? ch.createdAt.toDate() : null
+      if (createdDate) {
+        const key       = `${createdDate.getFullYear()}-${createdDate.getMonth() + 1}`
+        const monthName = createdDate.toLocaleString('default', { month: 'short', year: 'numeric' })
+
+        if (!result[key]) {
+          result[key] = {
+            month: monthName, year: createdDate.getFullYear(),
+            monthNumber: createdDate.getMonth() + 1,
+            sales: 0, purchases: 0, profit: 0,
+            soldCount: 0, purchaseCount: 0,
+          }
+        }
+        result[key].purchases     += Number(ch.purchasePrice) || 0
+        result[key].purchaseCount += 1
+      }
+
+      // ── SALES + PROFIT: sirf completed channels ──────────────────────────
+      const statusSet = new Set(['sold', 'terminatewithloss', 'hacked'])
+      if (!statusSet.has(ch.status)) return
+
+      let activityDate = null
+      if (ch.soldAt)            activityDate = ch.soldAt.toDate()
+      else if (ch.terminatedAt) activityDate = ch.terminatedAt.toDate()
+      else if (ch.hackedAt)     activityDate = ch.hackedAt.toDate()
+      else if (ch.updatedAt)    activityDate = ch.updatedAt.toDate()
+      if (!activityDate) return
+
+      const key       = `${activityDate.getFullYear()}-${activityDate.getMonth() + 1}`
+      const monthName = activityDate.toLocaleString('default', { month: 'short', year: 'numeric' })
+
+      if (!result[key]) {
+        result[key] = {
+          month: monthName, year: activityDate.getFullYear(),
+          monthNumber: activityDate.getMonth() + 1,
+          sales: 0, purchases: 0, profit: 0,
+          soldCount: 0, purchaseCount: 0,
+        }
+      }
+
+      const purchase = Number(ch.purchasePrice) || 0
+      const sale     = Number(ch.salePrice)     || 0
+
+      if (ch.status === 'sold') {
+        result[key].sales     += sale
+        result[key].soldCount += 1
+      }
+
+      switch (ch.status) {
+        case 'sold':
+          result[key].profit += sale - purchase; break
+        case 'terminatewithloss':
+          result[key].profit += -purchase; break
+        case 'hacked':
+          result[key].profit += -purchase; break
+        default: break
+      }
+    })
+
+    return Object.values(result).sort((a, b) =>
+      a.year !== b.year ? b.year - a.year : b.monthNumber - a.monthNumber
+    )
+  }, [channels])
+
+  return { data: monthlyData, isLoading, error }
+}
 
 // Total Sales Hook
 export const useTotalSales = () =>
@@ -382,7 +480,7 @@ export const useTerminateWithLoss = () => {
       )
     qc.setQueryData(channelKeys.all(), (old) =>
   old?.map((ch) =>
-    ch.id === id ? { ...ch, status: 'terminate_with_loss', terminationType: 'with_loss' } : ch
+    ch.id === id ? { ...ch, status: 'terminatewithloss', terminationType: 'withloss' } : ch
   ) ?? []
 )
       return { prevPurchased, prevAll }
@@ -414,7 +512,7 @@ export const useTerminateWithoutLoss = () => {
       )
       qc.setQueryData(channelKeys.all(), (old) =>
         old?.map((ch) =>
-          ch.id === id ? { ...ch, status: 'terminated', terminationType: 'without_loss' } : ch
+          ch.id === id ? { ...ch, status: 'terminated', terminationType: 'withoutloss' } : ch
         ) ?? []
       )
       return { prevPurchased, prevAll }
@@ -498,7 +596,7 @@ export const useCurrentMonthSales = () =>
     gcTime:    10 * 60 * 1000,
     select: (channels) => {
       const relevant = channels.filter((ch) => {
-        if (!['sold', 'terminate_without_loss'].includes(ch.status)) return false
+        if (!['sold'].includes(ch.status)) return false
         return isThisMonth(ch.soldAt ?? ch.updatedAt)
       })
       return {
@@ -530,7 +628,7 @@ export const useCurrentMonthProfit = () =>
     staleTime: 2 * 60 * 1000,
     gcTime:    10 * 60 * 1000,
     select: (channels) => {
-      const statusSet = new Set(['sold', 'terminate_without_loss', 'terminate_with_loss', 'hacked'])
+      const statusSet = new Set(['sold', 'terminatewithoutloss', 'terminatewithloss', 'hacked'])
       const relevant  = channels.filter((ch) => {
         if (!statusSet.has(ch.status)) return false
         const date = ch.soldAt ?? ch.terminatedAt ?? ch.hackedAt ?? ch.updatedAt ?? ch.createdAt
@@ -547,10 +645,8 @@ export const useCurrentMonthProfit = () =>
           case 'sold': {
             const p = sale - purchase; total += p; breakdown.sold += p; break
           }
-          case 'terminate_without_loss': {
-            const p = sale - purchase; total += p; breakdown.terminateWithoutLoss += p; break
-          }
-          case 'terminate_with_loss': {
+        
+          case 'terminatewithloss': {
             const l = -purchase; total += l; breakdown.terminateWithLoss += l; break
           }
           case 'hacked': {

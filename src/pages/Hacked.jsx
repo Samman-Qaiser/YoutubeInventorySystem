@@ -20,8 +20,8 @@ const PER_PAGE = 10
 const STATUS_FILTER_OPTIONS = [
   { value: "all",                   label: "All" },
   { value: "hacked",                label: "Hacked" },
-  { value: "terminate_with_loss",   label: "Terminate with Loss" },
-  { value: "terminate_without_loss",label: "Terminate without Loss" },
+  { value: "terminatewithloss",   label: "Terminate with Loss" },
+  { value: "terminatewithoutloss",label: "Terminate without Loss" },
 ]
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -49,11 +49,11 @@ const STATUS_BADGE = {
     cls: "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400",
     label: "Hacked",
   },
-  terminate_with_loss: {
+  terminatewithloss: {
     cls: "bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400",
     label: "Terminated (Loss)",
   },
-  terminate_without_loss: {
+  terminatewithoutloss: {
     cls: "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400",
     label: "Terminated (No Loss)",
   },
@@ -85,7 +85,7 @@ export default function HackedChannels() {
   // Only hacked + terminated channels
   const channels = useMemo(
     () => (allChannels ?? []).filter(ch =>
-      ["hacked", "terminate_with_loss", "terminate_without_loss"].includes(ch.status)
+      ["hacked", "terminatewithloss", "terminatewithoutloss"].includes(ch.status)
     ),
     [allChannels]
   )
@@ -136,13 +136,9 @@ export default function HackedChannels() {
 
       if (ch.status === "hacked") {
         totalLoss += purchase          // full purchase lost
-      } else if (ch.status === "terminate_with_loss") {
+      } else if (ch.status === "terminatewithloss") {
         totalLoss += purchase
-      } else if (ch.status === "terminate_without_loss") {
-        const p = sale - purchase
-        if (p >= 0) totalProfit += p
-        else        totalLoss   += Math.abs(p)
-      }
+      } 
     })
 
     return { totalPurchase, totalProfit, totalLoss, total: filtered.length }

@@ -5,7 +5,8 @@ import {
   Search, SlidersHorizontal, ChevronUp, X,
   TrendingUp, TrendingDown, BadgeDollarSign, PackageSearch,
   Eye, ChevronLeft, ChevronRight, User, ShoppingBag, DollarSign, BarChart2,
-  MoreVertical, ExternalLink, CheckCircle2, AlertTriangle, ArrowLeftRight, Skull, Loader2
+  MoreVertical, ExternalLink, CheckCircle2, AlertTriangle, ArrowLeftRight, Skull, Loader2,
+  Clock
 } from "lucide-react";
 import ViewChannelDrawer from "../components/ViewChannelDrawer";
 import Toast from "../components/Toast";
@@ -309,7 +310,8 @@ function ConfirmationModal({ isOpen, onClose, onConfirm, title, message, variant
 }
 
 // ─── Actions Menu Component with Disabled States ─────────────────────────────
-function ActionsMenu({ channel, onReturn, onHack, onOwnership, isOwnershipChanged }) {
+// ─── Actions Menu Component with Overdue Check ─────────────────────────────
+function ActionsMenu({ channel, onReturn, onHack, onOwnership, isOwnershipChanged, isOverdue }) {
   const [open, setOpen] = useState(false);
   
   return (
@@ -328,25 +330,26 @@ function ActionsMenu({ channel, onReturn, onHack, onOwnership, isOwnershipChange
               exit={{ opacity: 0, scale: 0.95, y: -4 }} transition={{ duration: 0.15 }}
               className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 z-[60] overflow-hidden"
             >
-              {/* Transfer Ownership - Disabled if already changed */}
-              <button 
-                onClick={() => { 
-                  if (!isOwnershipChanged) {
+              {/* Transfer Ownership - Sirf Overdue Channels ke liye show */}
+              {isOverdue && !isOwnershipChanged && (
+                <button 
+                  onClick={() => { 
                     setOpen(false); 
                     onOwnership(channel);
-                  }
-                }}
-                disabled={isOwnershipChanged}
-                className={`w-full text-left px-4 py-2.5 text-xs font-medium flex items-center gap-2 transition
-                  ${isOwnershipChanged 
-                    ? "text-gray-400 cursor-not-allowed bg-gray-50 dark:bg-gray-800" 
-                    : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
-                  }`}
-              >
-                <CheckCircle2 size={13} className={isOwnershipChanged ? "text-gray-400" : "text-blue-500"}/> 
-                Transfer Ownership
-                {isOwnershipChanged && <span className="text-[10px] ml-auto">(Changed)</span>}
-              </button>
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/10 flex items-center gap-2 transition"
+                >
+                  <CheckCircle2 size={13}/> Transfer Ownership
+                </button>
+              )}
+              
+              {/* Agar overdue hai lekin already changed hai */}
+              {isOverdue && isOwnershipChanged && (
+                <div className="px-4 py-2.5 text-xs text-gray-400 flex items-center gap-2">
+                  <CheckCircle2 size={13}/> Ownership Done
+                </div>
+              )}
+            
               
               <button 
                 onClick={() => { setOpen(false); onReturn(channel); }}
@@ -673,12 +676,26 @@ export default function Sales() {
                   <option value="month">Custom Month</option>
                 </select>
                 {dateFilter === "month" && (
-                  <div className="flex gap-2">
-                    <select value={dateMonth} onChange={e=>setDateMonth(e.target.value)} className={selectCls}>
-                      {MONTHS.map((m,i)=><option key={m} value={i}>{m}</option>)}
-                    </select>
-                    <input type="number" value={dateYear} onChange={e=>setDateYear(e.target.value)} min="2020" max="2030" className={inputCls+" w-24 shrink-0"}/>
-                  </div>
+      <div className="flex gap-2 col-span-1 sm:col-span-2">
+  <select 
+    value={dateMonth} 
+    onChange={e => setDateMonth(e.target.value)} 
+    className={selectCls + " flex-1 min-w-[130px]"}
+  >
+    <option value="" disabled>Select Month</option>
+    {MONTHS.map((m, i) => (
+      <option key={m} value={i}>{m}</option>
+    ))}
+  </select>
+  <input 
+    type="number" 
+    value={dateYear} 
+    onChange={e => setDateYear(e.target.value)} 
+    min="2020" 
+    max="2030" 
+    className={inputCls + " w-24 shrink-0"}
+  />
+</div>
                 )}
               </div>
             </div>
@@ -785,20 +802,32 @@ export default function Sales() {
                         </td>
                         
                         {/* Ownership Status Column - Disabled if already changed */}
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <button 
-                            onClick={() => !ownershipStatus && setOwnershipChannel(ch)}
-                            disabled={ownershipStatus}
-                            className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition 
-                              ${ownershipStatus
-                                ? "bg-green-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 cursor-not-allowed opacity-70"
-                                : "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400 hover:opacity-80 cursor-pointer"
-                              }`}
-                            title={ownershipStatus ? "Ownership already transferred" : "Click to transfer ownership"}
-                          >
-                            {ownerLabel}
-                          </button>
-                        </td>
+                     {/* Ownership Status Column - Sirf Overdue channels mein button show */}
+<td className="px-4 py-3 whitespace-nowrap">
+  {isOverdue ? (
+    <button 
+      onClick={() => !ownershipStatus && setOwnershipChannel(ch)}
+      disabled={ownershipStatus}
+      className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition 
+        ${ownershipStatus
+          ? "bg-green-500 dark:bg-green-600 text-white cursor-not-allowed opacity-70"
+          : "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400 hover:opacity-80 cursor-pointer"
+        }`}
+      title={ownershipStatus ? "Ownership already transferred" : "Click to transfer ownership"}
+    >
+      {ownerLabel}
+    </button>
+  ) : (
+    <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full 
+      ${ownershipStatus 
+        ? "bg-green-500 dark:bg-green-600 text-white"
+        : "bg-gray-100 dark:bg-gray-800 text-gray-400"
+      }`}
+    >
+      {ownerLabel}
+    </span>
+  )}
+</td>
                         
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className="text-sm font-bold text-blue-600 dark:text-blue-400">${ch.purchasePrice}</span>
@@ -838,6 +867,7 @@ export default function Sales() {
                               onHack={setHackChannelData}
                               onOwnership={setOwnershipChannel}
                               isOwnershipChanged={ownershipStatus}
+                              isOverdue={isOverdue}
                             />
                           </div>
                         </td>
@@ -854,9 +884,9 @@ export default function Sales() {
               <span className="font-semibold text-gray-600 dark:text-gray-300">
                 Showing {filtered.length} {filtered.length === 1 ? "sale" : "sales"}
               </span>
-              <span className="text-gray-400 dark:text-gray-500">Revenue: <span className="font-bold text-emerald-600 dark:text-emerald-400">{fmtRs(filtRevenue)}</span></span>
-              <span className="text-gray-400 dark:text-gray-500">Invested: <span className="font-bold text-blue-600 dark:text-blue-400">{fmtRs(filtInvested)}</span></span>
-              <span className="text-gray-400 dark:text-gray-500">Net Profit: <span className={`font-bold ${filtProfit >= 0 ? "text-violet-600 dark:text-violet-400" : "text-red-500"}`}>{filtProfit < 0 && "-"}{fmtRs(Math.abs(filtProfit))}</span></span>
+              <span className="text-gray-400 dark:text-gray-500">Revenue: <span className="font-bold text-emerald-600 dark:text-emerald-400">${filtRevenue}</span></span>
+              <span className="text-gray-400 dark:text-gray-500">Invested: <span className="font-bold text-blue-600 dark:text-blue-400">${filtInvested}</span></span>
+              <span className="text-gray-400 dark:text-gray-500">Net Profit: <span className={`font-bold ${filtProfit >= 0 ? "text-violet-600 dark:text-violet-400" : "text-red-500"}`}>{filtProfit < 0 && "-"}${Math.abs(filtProfit)}</span></span>
             </div>
           </div>
           

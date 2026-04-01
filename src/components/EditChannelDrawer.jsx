@@ -81,7 +81,10 @@ function Field({ label, required, error, children }) {
   );
 }
 
-const REQUIRED = ["channelName","category","monetizationStatus","channelEmail","channelPassword","purchasePrice","status"];
+const REQUIRED = [
+"channelUrl","channelName",
+ "purchasePrice","sellerName","salePrice",
+]
 
 export default function EditChannelDrawer({ channel, open, onClose, onSave }) {
   const { mutate: updateChannel, isPending, isSuccess, isError, error } = useUpdateChannel();
@@ -223,7 +226,7 @@ useEffect(() => {
                 <Field label="Channel Name" required error={errors.channelName}>
                   <input ref={setRef(0)} value={form.channelName} onChange={e=>set("channelName",e.target.value)} onKeyDown={kd(0)} placeholder="e.g. TechVault PK" className={inputCls}/>
                 </Field>
-                <Field label="Channel URL" error={errors.channelUrl}>
+                <Field label="Channel URL" required error={errors.channelUrl}>
                   <div className="relative">
                     <Link size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 pointer-events-none"/>
                     <input ref={setRef(1)} value={form.channelUrl} onChange={e=>set("channelUrl",e.target.value)} onKeyDown={kd(1)} placeholder="youtube.com/channel..." className={inputCls+" pl-8"}/>
@@ -232,7 +235,7 @@ useEffect(() => {
                 <Field label="Brand Name" error={errors.brandName}>
                   <input ref={setRef(2)} value={form.brandName} onChange={e=>set("brandName",e.target.value)} onKeyDown={kd(2)} placeholder="e.g. TechVault" className={inputCls}/>
                 </Field>
-                <Field label="Category" required error={errors.category}>
+                <Field label="Category"  error={errors.category}>
                   <select ref={setRef(3)} value={form.category} onChange={e=>set("category",e.target.value)} onKeyDown={kd(3)} className={selectCls}>
                     <option value="">Select category</option>
                     {CATEGORIES.map(c=><option key={c}>{c}</option>)}
@@ -257,7 +260,7 @@ useEffect(() => {
                 <Field label="Total Videos" error={errors.totalVideos}><input ref={setRef(7)} value={form.totalVideos} onChange={e=>set("totalVideos",e.target.value)} onKeyDown={kd(7)} placeholder="e.g. 312" className={inputCls}/></Field>
                 <Field label="Total Views" error={errors.views}><input ref={setRef(8)} value={form.views} onChange={e=>set("views",e.target.value)} onKeyDown={kd(8)} placeholder="e.g. 4.2M" className={inputCls}/></Field>
                 <Field label="Realtime Views" error={errors.realtimeViews}><input ref={setRef(9)} value={form.realtimeViews} onChange={e=>set("realtimeViews",e.target.value)} onKeyDown={kd(9)} placeholder="e.g. 1.5K/day" className={inputCls}/></Field>
-                <Field label="Watch Time (hrs)" error={errors.watchTime}><input ref={setRef(10)} type="number" value={form.watchTime} onChange={e=>set("watchTime",e.target.value)} onKeyDown={kd(10)} placeholder="e.g. 80000" className={inputCls}/></Field>
+                <Field label="Watch Time (hrs)" error={errors.watchTime}><input ref={setRef(10)} type="text" value={form.watchTime} onChange={e=>set("watchTime",e.target.value)} onKeyDown={kd(10)} placeholder="e.g. 80000" className={inputCls}/></Field>
                 <Field label="Channel Age" error={errors.channelAge}><input ref={setRef(11)} value={form.channelAge} onChange={e=>set("channelAge",e.target.value)} onKeyDown={kd(11)} placeholder="e.g. 2 years" className={inputCls}/></Field>
               </div>
             </motion.div>
@@ -265,14 +268,14 @@ useEffect(() => {
             <motion.div custom={2} variants={secVar} initial="hidden" animate="visible">
               <SectionLabel>Monetization & Status</SectionLabel>
               <div className="flex flex-col gap-3">
-                <Field label="Monetization Status" required error={errors.monetizationStatus}>
+                <Field label="Monetization Status"  error={errors.monetizationStatus}>
                   <select ref={setRef(12)} value={form.monetizationStatus} onChange={e=>set("monetizationStatus",e.target.value)} onKeyDown={kd(12)} className={selectCls}>
                     <option value="">Select status</option>
                     <option>Monetized</option><option>Not Monetized</option><option>Pending</option>
                   </select>
                 </Field>
                 <Field label="Earning per Month (Rs)" error={errors.earningData}>
-                  <input ref={setRef(13)} type="number" value={form.earningData} onChange={e=>set("earningData",e.target.value)} onKeyDown={kd(13)} placeholder="e.g. 15000" className={inputCls}/>
+                  <input ref={setRef(13)} type="text" value={form.earningData} onChange={e=>set("earningData",e.target.value)} onKeyDown={kd(13)} placeholder="e.g. 15000" className={inputCls}/>
                 </Field>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Verification" error={errors.verificationStatus}>
@@ -299,10 +302,10 @@ useEffect(() => {
             <motion.div custom={3} variants={secVar} initial="hidden" animate="visible">
               <SectionLabel>Account Credentials</SectionLabel>
               <div className="flex flex-col gap-3">
-                <Field label="Channel Email" required error={errors.channelEmail}>
+                <Field label="Channel Email"  error={errors.channelEmail}>
                   <input ref={setRef(17)} type="email" value={form.channelEmail} onChange={e=>set("channelEmail",e.target.value)} onKeyDown={kd(17)} placeholder="channel@gmail.com" className={inputCls}/>
                 </Field>
-                <Field label="Channel Password" required error={errors.channelPassword}>
+                <Field label="Channel Password"  error={errors.channelPassword}>
                   <div className="relative">
                     <input ref={setRef(18)} type={showPass?"text":"password"} value={form.channelPassword} onChange={e=>set("channelPassword",e.target.value)} onKeyDown={kd(18)} placeholder="••••••••" className={inputCls+" pr-10"}/>
                     <button type="button" onClick={()=>setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 hover:text-gray-500 transition">{showPass?<EyeOff size={14}/>:<Eye size={14}/>}</button>
@@ -318,16 +321,16 @@ useEffect(() => {
               <SectionLabel>Pricing</SectionLabel>
               <div className="flex flex-col gap-3">
                 <Field label="Purchase Price (Rs)" required error={errors.purchasePrice}>
-                  <input ref={setRef(20)} type="number" value={form.purchasePrice} onChange={e=>set("purchasePrice",e.target.value)} onKeyDown={kd(20)} placeholder="e.g. 280000" className={inputCls}/>
+                  <input ref={setRef(20)} type="text" value={form.purchasePrice} onChange={e=>set("purchasePrice",e.target.value)} onKeyDown={kd(20)} placeholder="e.g. 280000" className={inputCls}/>
                 </Field>
-                <Field label="Seller Name" error={errors.sellerName}>
+                <Field label="Seller Name" required error={errors.sellerName}>
                   <div className="relative">
                     <User size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 pointer-events-none" />
                     <input ref={setRef(21)} value={form.sellerName} onChange={e=>set("sellerName",e.target.value)} onKeyDown={kd(21)} placeholder="Enter seller name" className={inputCls+" pl-8"}/>
                   </div>
                 </Field>
-                <Field label="Sale Price (Rs)" error={errors.salePrice}>
-                  <input ref={setRef(22)} type="number" value={form.salePrice} onChange={e=>set("salePrice",e.target.value)} onKeyDown={kd(22)} placeholder="e.g. 380000" className={inputCls}/>
+                <Field label="Sale Price (Rs)" required error={errors.salePrice}>
+                  <input ref={setRef(22)} type="text" value={form.salePrice} onChange={e=>set("salePrice",e.target.value)} onKeyDown={kd(22)} placeholder="e.g. 380000" className={inputCls}/>
                 </Field>
                 {/* <Field label="Status" required error={errors.status}>
                   <select ref={setRef(23)} value={form.status} onChange={e=>set("status",e.target.value)} onKeyDown={kd(23,true)} className={selectCls}>

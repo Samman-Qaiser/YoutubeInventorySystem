@@ -14,7 +14,7 @@ import {
   Eye, ChevronLeft, ChevronRight, User,
   MoreVertical, ExternalLink, CheckCircle2,
   AlertTriangle, TrendingDown, Loader2,
-  UserCheck,
+  UserCheck, Clock,
 } from "lucide-react"
 
 import SaleModal from "../components/SaleModal"
@@ -267,11 +267,8 @@ function TerminateModal({ channel, open, onClose, onTerminate, isUpdating }) {
   )
 }
 
-// ─── Sale Modal with Loading State ──────────────────────────────────────────
-// Note: SaleModal component should be updated separately to accept isLoading prop
-
-// ─── 3-dot Actions Menu with Disabled States ─────────────────────────────────
-function ActionsMenu({ channel, onSell, onTerminate, onOwnership, isOwnershipChanged }) {
+// ─── 3-dot Actions Menu with Overdue Check ─────────────────────────────────
+function ActionsMenu({ channel, onSell, onTerminate, onOwnership, isOwnershipChanged, isOverdue }) {
   const [open, setOpen] = useState(false)
   return (
     <div className="relative">
@@ -288,25 +285,22 @@ function ActionsMenu({ channel, onSell, onTerminate, onOwnership, isOwnershipCha
               exit={{ opacity:0, scale:0.95, y:-4 }} transition={{ duration:0.15 }}
               className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 z-[60] overflow-hidden"
             >
-              {/* Transfer Ownership - Disabled if already changed */}
-              <button 
-                onClick={() => { 
-                  if (!isOwnershipChanged) {
+              {/* Transfer Ownership - Sirf Overdue Channels ke liye show */}
+              {isOverdue && !isOwnershipChanged && (
+                <button 
+                  onClick={() => { 
                     setOpen(false); 
                     onOwnership(channel);
-                  }
-                }}
-                disabled={isOwnershipChanged}
-                className={`w-full text-left px-4 py-2.5 text-xs font-medium flex items-center gap-2 transition
-                  ${isOwnershipChanged 
-                    ? "text-gray-400 cursor-not-allowed bg-gray-50 dark:bg-gray-800" 
-                    : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
-                  }`}
-              >
-                <CheckCircle2 size={13} className={isOwnershipChanged ? "text-gray-400" : "text-blue-500"}/> 
-                Transfer Ownership
-                {isOwnershipChanged && <span className="text-[10px] ml-auto">(Changed)</span>}
-              </button>
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/10 flex items-center gap-2 transition"
+                >
+                  <CheckCircle2 size={13}/> Transfer Ownership
+                </button>
+              )}
+              
+    
+              
+            
               
               <button 
                 onClick={() => { setOpen(false); onSell(channel); }}
@@ -502,7 +496,8 @@ export default function Purchases() {
                 </select>
                 {dateFilter === "month" && (
                   <div className="flex gap-2 col-span-full sm:col-span-2 lg:col-span-1">
-                    <select value={dateMonth} onChange={e => setDateMonth(e.target.value)} className={selectCls}>
+                    <select  value={dateMonth} onChange={e => setDateMonth(e.target.value)} className={selectCls+ " flex-1 min-w-[130px]" }>
+                    <option value="" disabled>Select Month</option>
                       {MONTHS.map((m,i) => <option key={m} value={i}>{m}</option>)}
                     </select>
                     <input type="number" value={dateYear} onChange={e => setDateYear(e.target.value)} min="2020" max="2035" className={inputCls + " w-24 shrink-0"}/>
@@ -530,9 +525,10 @@ export default function Purchases() {
               <tbody>
                 <AnimatePresence>
                   {paginated.map((ch, i) => {
-                    const overdue    = isOverdue(ch.createdAt) && !ch.ownerShip
+                    const overdue = isOverdue(ch.createdAt) && !ch.ownerShip
                     const ownerLabel = ch.ownerShip ? "Changed" : "Pending"
                     const isOwnershipChanged = ch.ownerShip || false
+                    const isOverdueFlag = isOverdue(ch.createdAt)
                     
                     return (
                       <motion.tr key={ch.id}
@@ -540,7 +536,7 @@ export default function Purchases() {
                         exit={{ opacity:0, x:12 }} transition={{ delay: i*0.03, duration:0.25 }}
                         className={`border-b border-gray-50 dark:border-gray-800/60 transition group
                           ${overdue
-                            ? "bg-yellow-200 dark:bg-[#8B5CF6] hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                            ? "bg-yellow-100 dark:bg-[#8B5CF6] hover:bg-yellow-200"
                             : ""
                           }`}
                       >
@@ -585,21 +581,32 @@ export default function Purchases() {
                           </span>
                         </td>
 
-                        {/* Ownership - Disabled if already changed */}
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <button 
-                            onClick={() => !isOwnershipChanged && setOwnershipChannel(ch)}
-                            disabled={isOwnershipChanged}
-                            className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition 
-                              ${isOwnershipChanged
-                                ? "bg-green-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 cursor-not-allowed opacity-70"
-                                : "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400 hover:opacity-80 cursor-pointer"
-                              }`}
-                            title={isOwnershipChanged ? "Ownership already transferred" : "Click to transfer ownership"}
-                          >
-                            {ownerLabel}
-                          </button>
-                        </td>
+                        {/* Ownership - Sirf Overdue channels mein button show */}
+                     <td className="px-4 py-3 whitespace-nowrap">
+  {isOverdueFlag ? (
+    <button 
+      onClick={() => !isOwnershipChanged && setOwnershipChannel(ch)}
+      disabled={isOwnershipChanged}
+      className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition 
+        ${isOwnershipChanged
+          ? "bg-green-500 dark:bg-green-600 text-white cursor-not-allowed opacity-70"
+          : "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400 hover:opacity-80 cursor-pointer"
+        }`}
+      title={isOwnershipChanged ? "Ownership already transferred" : "Click to transfer ownership"}
+    >
+      {ownerLabel}
+    </button>
+  ) : (
+    <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full 
+      ${isOwnershipChanged 
+        ? "bg-green-500 dark:bg-green-600 text-white"
+        : "bg-gray-100 dark:bg-gray-800 text-gray-400"
+      }`}
+    >
+      {ownerLabel}
+    </span>
+  )}
+</td>
 
                         {/* Purchase Price */}
                         <td className="px-4 py-3 whitespace-nowrap">
@@ -624,8 +631,9 @@ export default function Purchases() {
                             onTerminate={setTerminateChannel}
                             onOwnership={setOwnershipChannel}
                             isOwnershipChanged={isOwnershipChanged}
+                            isOverdue={isOverdueFlag}
                           />
-                         </td>
+                        </td>
                       </motion.tr>
                     )
                   })}

@@ -21,8 +21,8 @@ const EMPTY = {
 };
 
 const REQUIRED = [
-  "channelName","monetizationStatus",
-  "channelEmail","channelPassword","purchasePrice","sellerName","salePrice"
+"channelUrl","channelName",
+ "purchasePrice","sellerName","salePrice",
 ];
 
 const TOTAL_FIELDS = 26;
@@ -282,10 +282,13 @@ useEffect(() => {
                 <div className="flex flex-col gap-3">
 
                   {/* URL — triggers auto-fill on blur */}
-                  <Field label="Channel URL" error={errors.channelUrl}>
+                  
+                  <Field label="Channel URL" required error={errors.channelUrl}>
                     <div className="relative">
                       <Link size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 pointer-events-none" />
+                    
                       <input
+                     
                         ref={setRef(0)}
                         value={form.channelUrl}
                         onChange={(e) => set("channelUrl", e.target.value)}
@@ -295,6 +298,7 @@ useEffect(() => {
                         className={inputCls + " pl-8 pr-8"}
                         disabled={isDisabled}
                       />
+                  
                       {urlLoading && (
                         <Loader2
                           size={13}
@@ -483,7 +487,7 @@ useEffect(() => {
                 <SectionLabel>Monetization & Status</SectionLabel>
                 <div className="flex flex-col gap-3">
 
-                  <Field label="Monetization Status" required error={errors.monetizationStatus}>
+                  <Field label="Monetization Status"  error={errors.monetizationStatus}>
                     <select
                       ref={setRef(12)}
                       value={form.monetizationStatus}
@@ -502,7 +506,7 @@ useEffect(() => {
                   <Field label="Earning per Month (Rs)" error={errors.earningData}>
                     <input
                       ref={setRef(13)}
-                      type="number"
+                      type="text"
                       value={form.earningData}
                       onChange={(e) => set("earningData", e.target.value)}
                       onKeyDown={kd(13)}
@@ -573,7 +577,7 @@ useEffect(() => {
   <SectionLabel>Account Credentials</SectionLabel>
   <div className="flex flex-col gap-3">
 
-    <Field label="Channel Email" required error={errors.channelEmail}>
+    <Field label="Channel Email"  error={errors.channelEmail}>
       <input
         ref={setRef(17)}
         type="email"
@@ -586,7 +590,7 @@ useEffect(() => {
       />
     </Field>
 
-    <Field label="Channel Password" required error={errors.channelPassword}>
+    <Field label="Channel Password"  error={errors.channelPassword}>
       <div className="relative">
         <input
           ref={setRef(18)}
@@ -632,7 +636,7 @@ useEffect(() => {
     <Field label="Purchase Price ($)" required error={errors.purchasePrice}>
       <input
         ref={setRef(22)}
-        type="number"
+        type="text"
         value={form.purchasePrice}
         onChange={(e) => set("purchasePrice", e.target.value)}
         onKeyDown={kd(22)}
@@ -642,10 +646,10 @@ useEffect(() => {
       />
     </Field>
 
-    <Field label="Expected Sale Price ($)" error={errors.salePrice}>
+    <Field label="Expected Sale Price ($)" required error={errors.salePrice}>
       <input
         ref={setRef(23)}
-        type="number"
+        type="text"
         value={form.salePrice}
         onChange={(e) => set("salePrice", e.target.value)}
         onKeyDown={kd(23)}

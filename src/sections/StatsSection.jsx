@@ -1,20 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import {
   TrendingUp, ShoppingCart, DollarSign, Video,
-  CheckCircle, AlertTriangle, Eye, EyeOff, CalendarDays
+  CheckCircle, AlertTriangle, Eye, EyeOff, Filter
 } from "lucide-react";
-import {
-  useTotalSales,
-  useTotalPurchases,
-  useTotalProfit,
-  useChannelCounts,
-  useCurrentMonthSales,
-  useCurrentMonthPurchases,
-  useCurrentMonthProfit,
-} from "../hooks/useChannels";
+import { useAllChannels } from "../hooks/useChannels";
 
-// ─── Skeleton ────────────────────────────────────────────────────────────────
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
 function SkeletonCard({ accent }) {
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
@@ -33,21 +27,19 @@ function SkeletonCard({ accent }) {
   );
 }
 
-// ─── Animated number ─────────────────────────────────────────────────────────
+// ─── CountUp ──────────────────────────────────────────────────────────────────
 function CountUp({ value, prefix = "", hidden = false }) {
   const count   = useMotionValue(0);
-  const rounded = useTransform(count, (latest) =>
-    prefix + Math.round(latest).toLocaleString()
-  );
+  const rounded = useTransform(count, (v) => prefix + Math.round(v).toLocaleString());
   useEffect(() => {
-    const controls = animate(count, value, { duration: 1.8, ease: "easeOut" });
-    return () => controls.stop();
-  }, [value, count]);
+    const c = animate(count, value, { duration: 1.6, ease: "easeOut" });
+    return () => c.stop();
+  }, [value]);
   if (hidden) return <span className="tracking-widest">••••••</span>;
   return <motion.span>{rounded}</motion.span>;
 }
 
-// ─── Stat card ────────────────────────────────────────────────────────────────
+// ─── StatCard ─────────────────────────────────────────────────────────────────
 function StatCard({ card, index, maxValue, profitHidden, onToggleHide }) {
   const Icon        = card.icon;
   const isHidden    = card.hideable && profitHidden;
@@ -58,7 +50,7 @@ function StatCard({ card, index, maxValue, profitHidden, onToggleHide }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -3 }}
-      transition={{ delay: index * 0.07, duration: 0.4 }}
+      transition={{ delay: index * 0.06, duration: 0.35 }}
       className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm"
     >
       <div className="flex items-center justify-between mb-3">
@@ -69,7 +61,7 @@ function StatCard({ card, index, maxValue, profitHidden, onToggleHide }) {
           <span className={`text-xs font-medium px-1.5 py-0.5 rounded-md ${
             card.up
               ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"
-              : "bg-red-50 dark:bg-red-900/20 text-red-500"
+              : "bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400"
           }`}>
             {card.up ? "↑" : "↓"} {card.change}
           </span>
@@ -81,17 +73,15 @@ function StatCard({ card, index, maxValue, profitHidden, onToggleHide }) {
           )}
         </div>
       </div>
-
       <p className="text-xl font-bold text-gray-800 dark:text-white mb-0.5">
         <CountUp value={card.value} prefix={card.prefix} hidden={isHidden} />
       </p>
       <p className="text-xs text-gray-400 dark:text-gray-500">{card.label}</p>
-
       <div className="mt-3 h-0.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${progressPct}%` }}
-          transition={{ delay: index * 0.07 + 0.5, duration: 1, ease: "easeOut" }}
+          transition={{ delay: index * 0.06 + 0.4, duration: 1, ease: "easeOut" }}
           className="h-full rounded-full"
           style={{ backgroundColor: card.accent }}
         />
@@ -100,151 +90,243 @@ function StatCard({ card, index, maxValue, profitHidden, onToggleHide }) {
   );
 }
 
-// ─── Section header ───────────────────────────────────────────────────────────
-function SectionHeader({ icon: Icon, title, subtitle, accent }) {
-  return (
-    <div className="flex items-center gap-2 mb-3">
-      <div className="p-1.5 rounded-lg" style={{ backgroundColor: `${accent}15` }}>
-        <Icon size={14} style={{ color: accent }} />
-      </div>
-      <div>
-        <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 leading-none">{title}</p>
-        {subtitle && <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{subtitle}</p>}
-      </div>
-    </div>
-  );
-}
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+const toDate = (ts) => ts?.toDate ? ts.toDate() : ts ? new Date(ts) : null;
+
+const getActivityDate = (ch) =>
+  toDate(ch.soldAt ?? ch.terminatedAt ?? ch.hackedAt ?? ch.updatedAt ?? ch.createdAt);
+
+const getCreatedDate = (ch) => toDate(ch.createdAt);
+
+// Check karo agar date us year/month mein hai
+const dateInPeriod = (d, year, month) => {
+  if (!d) return false;
+  if (month !== null) return d.getFullYear() === year && d.getMonth() === month;
+  return d.getFullYear() === year;
+};
+
+// ─── Stats calculator ─────────────────────────────────────────────────────────
+// PURPOSE-BASED filter:
+// purchases  → createdAt se check (kab kharida)
+// sales/profit → activityDate se check (kab becha/hacked/terminated)
+// Dono alag alag check hote hain — ek dusre ko affect nahi karte
+const calcStats = (channels, selectedYear, selectedMonth) => {
+  let sales = 0, purchases = 0, profit = 0;
+  let total = 0, sold = 0, hacked = 0;
+  let terminatedWithLoss = 0, terminatedWithoutLoss = 0, purchased = 0;
+
+  const isAllTime = selectedYear === "all";
+  const year  = isAllTime ? null : Number(selectedYear);
+  const month = (!isAllTime && selectedMonth !== "all") ? Number(selectedMonth) : null;
+
+  (channels || []).forEach((ch) => {
+    const createdD  = getCreatedDate(ch);
+    const activityD = getActivityDate(ch);
+
+    // Purchase period check — createdAt se
+    const purchaseInPeriod = isAllTime || dateInPeriod(createdD, year, month);
+
+    // Activity period check — soldAt/terminatedAt/hackedAt/updatedAt se
+    const activityInPeriod = isAllTime || dateInPeriod(activityD, year, month);
+
+    // Channel show karo agar koi bhi event us period mein hua ho
+    if (!purchaseInPeriod && !activityInPeriod) return;
+
+    total++;
+
+    const p = Number(ch.purchasePrice) || 0;
+    const s = Number(ch.salePrice)     || 0;
+
+    // Purchases: sirf tab count karo jab us period mein KHAREEDA gaya ho
+    if (purchaseInPeriod) {
+      purchases += p;
+    }
+
+    // Sales + Profit: sirf tab count karo jab us period mein ACTIVITY hui ho
+    if (activityInPeriod) {
+      switch (ch.status) {
+        case "sold":
+          sold++;
+          sales  += s;
+          profit += s - p;
+          break;
+        case "terminatewithloss":
+          terminatedWithLoss++;
+          profit += -p;
+          break;
+        case "hacked":
+          hacked++;
+          profit += -p;
+          break;
+        case "terminatewithoutloss":
+          terminatedWithoutLoss++;
+          break;
+        default:
+          break;
+      }
+    }
+
+    // Purchased (abhi bhi stock mein): sirf purchase period se count
+    if (ch.status === "purchased" && purchaseInPeriod) {
+      purchased++;
+    }
+  });
+
+  return {
+    sales, purchases, profit, total, sold, hacked,
+    terminatedWithLoss, terminatedWithoutLoss, purchased,
+  };
+};
+
+// ─── Select styles ────────────────────────────────────────────────────────────
+const selectCls = "px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-violet-400/40 cursor-pointer";
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function StatsSection() {
-  const [profitHidden, setProfitHidden] = useState(false);
+  const [profitHidden,  setProfitHidden]  = useState(false);
+  const [selectedYear,  setSelectedYear]  = useState("all"); // "all" = All Time
+  const [selectedMonth, setSelectedMonth] = useState("all"); // "all" = whole year
 
-  // ── All-time queries (separate Firestore calls, cached 5 min) ──────────────
-  const { data: totalSales     = 0, isLoading: salesLoading     } = useTotalSales();
-  const { data: totalPurchases = 0, isLoading: purchasesLoading } = useTotalPurchases();
-  const { data: profitData,         isLoading: profitLoading     } = useTotalProfit();
-  const { data: counts,             isLoading: countsLoading     } = useChannelCounts();
+  const { data: channels = [], isLoading } = useAllChannels();
 
-  // ── Current month — derived from useAllChannels cache, ZERO extra fetches ──
-  // All three share the same ['channels','all'] query key.
-  // React Query fetches once and runs each `select` fn in memory.
-  const { data: cmSales,     isLoading: cmLoading } = useCurrentMonthSales();
-  const { data: cmPurchases                        } = useCurrentMonthPurchases();
-  const { data: cmProfit                           } = useCurrentMonthProfit();
+  // ── Years: 2020 se current year tak, plus jo data mein hain ──────────────
+  const availableYears = useMemo(() => {
+    const set = new Set();
+    channels.forEach((ch) => {
+      const d = getCreatedDate(ch);
+      if (d) set.add(d.getFullYear());
+      const a = getActivityDate(ch);
+      if (a) set.add(a.getFullYear());
+    });
+    const currentYear = new Date().getFullYear();
+    for (let yr = 2020; yr <= currentYear; yr++) set.add(yr);
+    return Array.from(set).sort((a, b) => b - a);
+  }, [channels]);
 
-  const totalProfit  = profitData?.total       || 0;
-  const cmSalesAmt   = cmSales?.total          || 0;
-  const cmPurchAmt   = cmPurchases?.total      || 0;
-  const cmProfitAmt  = cmProfit?.total         || 0;
-  const cmSalesCnt   = cmSales?.count          || 0;
-  const cmPurchCnt   = cmPurchases?.count      || 0;
+  // ── Stats ─────────────────────────────────────────────────────────────────
+  const stats = useMemo(() => {
+    return calcStats(channels, selectedYear, selectedMonth);
+  }, [channels, selectedYear, selectedMonth]);
 
-  // All three current-month hooks share one request — one loading flag is enough
-  const isLoadingAll   = salesLoading || purchasesLoading || profitLoading || countsLoading;
-  const isLoadingMonth = cmLoading;
+  // ── Period label ──────────────────────────────────────────────────────────
+  const periodLabel = selectedYear === "all"
+    ? "All Time"
+    : selectedMonth !== "all"
+      ? `${MONTHS[Number(selectedMonth)]} ${selectedYear}`
+      : String(selectedYear);
 
-  const currentMonthName = new Date().toLocaleString("default", { month: "long", year: "numeric" });
-
-  // ── Card definitions ───────────────────────────────────────────────────────
-  const currentMonthCards = [
+  // ── Cards ─────────────────────────────────────────────────────────────────
+  const cards = [
     {
-      label: "This Month Sales",     value: cmSalesAmt,
-      icon: TrendingUp,  accent: "#10b981", prefix: "$ ",
-      change: `${cmSalesCnt} sold`,  up: cmSalesAmt > 0,  hideable: false,
+      label: "Sales",          value: stats.sales,
+      icon: TrendingUp,        accent: "#10b981", prefix: "$ ",
+      change: `${stats.sold} sold`,
+      up: stats.sales >= 0,    hideable: false,
     },
     {
-      label: "This Month Purchases", value: cmPurchAmt,
-      icon: ShoppingCart, accent: "#3b82f6", prefix: "$ ",
-      change: `${cmPurchCnt} bought`, up: cmPurchAmt > 0, hideable: false,
+      label: "Purchases",      value: stats.purchases,
+      icon: ShoppingCart,      accent: "#3b82f6", prefix: "$ ",
+      change: `${stats.total} channels`,
+      up: true,                hideable: false,
     },
     {
-      label: "This Month Profit",    value: cmProfitAmt,
-      icon: DollarSign,  accent: "#8b5cf6", prefix: "$ ",
-      change: cmProfitAmt >= 0 ? "Profit" : "Loss", up: cmProfitAmt >= 0, hideable: true,
+      label: "Profit",         value: stats.profit,
+      icon: DollarSign,        accent: "#8b5cf6", prefix: "$ ",
+      change: stats.profit >= 0 ? "Profit" : "Loss",
+      up: stats.profit >= 0,   hideable: true,
+    },
+    {
+      label: "Total Channels", value: stats.total,
+      icon: Video,             accent: "#ef4444", prefix: "",
+      change: `${stats.purchased} in stock`,
+      up: true,                hideable: false,
+    },
+    {
+      label: "Channels Sold",  value: stats.sold,
+      icon: CheckCircle,       accent: "#14b8a6", prefix: "",
+      change: `${stats.terminatedWithoutLoss} terminated`,
+      up: true,                hideable: false,
+    },
+    {
+      label: "Hacked / Lost",  value: stats.hacked,
+      icon: AlertTriangle,     accent: "#f97316", prefix: "",
+      change: `${stats.terminatedWithLoss} with loss`,
+      up: false,               hideable: false,
     },
   ];
 
-  const allTimeCards = [
-    {
-      label: "Total Sales",     value: totalSales,
-      icon: TrendingUp,  accent: "#10b981", prefix: "$ ",
-      change: "+12.5%", up: true, hideable: false,
-    },
-    {
-      label: "Total Purchases", value: totalPurchases,
-      icon: ShoppingCart, accent: "#3b82f6", prefix: "$ ",
-      change: "+8.2%",  up: true, hideable: false,
-    },
-    {
-      label: "Total Profit",    value: totalProfit,
-      icon: DollarSign,  accent: "#8b5cf6", prefix: "$ ",
-      change: totalProfit >= 0 ? "+18.9%" : "-5.2%", up: totalProfit >= 0, hideable: true,
-    },
-    {
-      label: "Total Channels",  value: counts?.total || 0,
-      icon: Video,       accent: "#ef4444", prefix: "",
-      change: `+${counts?.total || 0}`, up: true, hideable: false,
-    },
-    {
-      label: "Channels Sold",   value: counts?.sold  || 0,
-      icon: CheckCircle, accent: "#14b8a6", prefix: "",
-      change: `+${counts?.sold || 0}`, up: true, hideable: false,
-    },
-    {
-      label: "Hacked / Lost",   value: counts?.hacked || 0,
-      icon: AlertTriangle, accent: "#f97316", prefix: "",
-      change: `${counts?.hacked || 0}`, up: false, hideable: false,
-    },
-  ];
+  const maxValue = Math.max(...cards.map((c) => Math.abs(c.value)), 1);
 
-  const allTimeMax = Math.max(
-    totalSales, totalPurchases, Math.abs(totalProfit),
-    counts?.total || 0, counts?.sold || 0, counts?.hacked || 0, 1
-  );
-  const monthMax = Math.max(cmSalesAmt, cmPurchAmt, Math.abs(cmProfitAmt), 1);
+  // ── Loading ───────────────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-12 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 animate-pulse" />
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          {["#10b981","#3b82f6","#8b5cf6","#ef4444","#14b8a6","#f97316"].map((a, i) =>
+            <SkeletonCard key={i} accent={a} />
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
 
-      {/* ── This Month ────────────────────────────────────────────────────── */}
-      <div>
-        <SectionHeader
-          icon={CalendarDays} title={currentMonthName}
-          subtitle="Current month performance" accent="#8b5cf6"
-        />
-        {isLoadingMonth ? (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {["#10b981","#3b82f6","#8b5cf6"].map((a, i) => <SkeletonCard key={i} accent={a} />)}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {currentMonthCards.map((card, i) => (
-              <StatCard key={card.label} card={card} index={i} maxValue={monthMax}
-                profitHidden={profitHidden} onToggleHide={() => setProfitHidden(!profitHidden)} />
+      {/* ── Filter bar ────────────────────────────────────────────────────── */}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl px-4 py-3 border border-gray-100 dark:border-gray-800 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <Filter size={13} className="text-gray-400 dark:text-gray-500" />
+          <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">Filter by:</span>
+
+          {/* Year */}
+          <select
+            value={selectedYear}
+            onChange={(e) => {
+              setSelectedYear(e.target.value);
+              setSelectedMonth("all");
+            }}
+            className={selectCls}
+          >
+            <option value="all">All Years</option>
+            {availableYears.map((yr) => (
+              <option key={yr} value={yr}>{yr}</option>
             ))}
-          </div>
-        )}
+          </select>
+
+          {/* Month — disabled when All Years */}
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            disabled={selectedYear === "all"}
+            className={`${selectCls} ${selectedYear === "all" ? "opacity-50 cursor-not-allowed" : ""}`}
+          >
+            <option value="all">All Months</option>
+            {MONTHS.map((m, i) => (
+              <option key={m} value={i}>{m}</option>
+            ))}
+          </select>
+
+          {/* Active period badge */}
+          <span className="ml-auto text-xs font-semibold text-violet-500 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20 px-2.5 py-1 rounded-lg">
+            {periodLabel}
+          </span>
+        </div>
       </div>
 
-      {/* ── All Time ──────────────────────────────────────────────────────── */}
-      <div>
-        <SectionHeader
-          icon={TrendingUp} title="All Time"
-          subtitle="Lifetime statistics" accent="#10b981"
-        />
-        {isLoadingAll ? (
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-            {["#10b981","#3b82f6","#8b5cf6","#ef4444","#14b8a6","#f97316"].map((a, i) =>
-              <SkeletonCard key={i} accent={a} />)}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-            {allTimeCards.map((card, i) => (
-              <StatCard key={card.label} card={card} index={i} maxValue={allTimeMax}
-                profitHidden={profitHidden} onToggleHide={() => setProfitHidden(!profitHidden)} />
-            ))}
-          </div>
-        )}
+      {/* ── Cards grid ────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        {cards.map((card, i) => (
+          <StatCard
+            key={card.label}
+            card={card}
+            index={i}
+            maxValue={maxValue}
+            profitHidden={profitHidden}
+            onToggleHide={() => setProfitHidden(!profitHidden)}
+          />
+        ))}
       </div>
 
     </div>
