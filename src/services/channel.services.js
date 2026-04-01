@@ -547,7 +547,7 @@ export const fetchCurrentMonthProfit = async () => {
 // ─── WRITE operations ─────────────────────────────────────────────────────────
 
 // add new channel — status always 'purchased', ownerShip always false
-// createChannel function update karo — transactions collection mein bhi add ho
+// createChannel function update karo — transaction collection mein bhi add ho
 export const createChannel = async (data) => {
   const payload = {
     ...data,
@@ -558,7 +558,7 @@ export const createChannel = async (data) => {
   const docRef = await addDoc(colRef(), payload)
 
   // ✅ transaction automatically create karo
-  const txColRef = collection(db, 'transactions')
+  const txColRef = collection(db, 'transaction')
   await addDoc(txColRef, {
     channelId:      docRef.id,
     purchaseOrSale: 'purchased',
@@ -593,7 +593,7 @@ export const deleteChannel = async (id) => {
     batch.delete(channelRef);
     
     // 2. Find and delete all related transactions
-    const transactionsRef = collection(db, 'transactions');
+    const transactionsRef = collection(db, 'transaction');
     const q = query(transactionsRef, where('channelId', '==', id));
     const querySnapshot = await getDocs(q);
     
@@ -607,7 +607,7 @@ export const deleteChannel = async (id) => {
     // 3. Commit all deletions in a single batch operation
     await batch.commit();
     
-    console.log(`Channel ${id} and ${querySnapshot.size} transactions deleted successfully`);
+    console.log(`Channel ${id} and ${querySnapshot.size} transaction deleted successfully`);
     return { 
       success: true, 
       channelId: id, 
@@ -615,7 +615,7 @@ export const deleteChannel = async (id) => {
     };
     
   } catch (error) {
-    console.error('Error deleting channel and transactions:', error);
+    console.error('Error deleting channel and transaction:', error);
     throw error;
   }
 };
@@ -630,7 +630,7 @@ export const markChannelSold = async (id, salePrice, buyerName, contactNumber) =
     updatedAt: serverTimestamp(),
   })
   // also create transaction record
-  const txColRef = collection(db, 'transactions')
+  const txColRef = collection(db, 'transaction')
   await addDoc(txColRef, {
     channelId:       id,
     purchaseOrSale:  'sold',
@@ -651,7 +651,7 @@ export const terminateWithLoss = async (id, channelData) => {
     updatedAt: serverTimestamp(), // optional
   })
 
-  await addDoc(collection(db, 'transactions'), {
+  await addDoc(collection(db, 'transaction'), {
     channelId:      id,
     channelName:    channelData.channelName || '',
     purchaseOrSale: 'terminatewithloss',
@@ -670,7 +670,7 @@ export const terminateWithoutLoss = async (id, channelData) => {
     updatedAt: serverTimestamp(), // optional
   })
 
-  await addDoc(collection(db, 'transactions'), {
+  await addDoc(collection(db, 'transaction'), {
     channelId:      id,
     channelName:    channelData.channelName || '',
     purchaseOrSale: 'terminatewithoutloss',
@@ -693,14 +693,14 @@ export const transferOwnership = async (id) => {
 // return channel — status back to purchased, sold transaction delete
 export const returnChannel = async (id) => {
   // sold transaction dhundo aur delete karo
-  const txColRef = collection(db, 'transactions')
+  const txColRef = collection(db, 'transaction')
   const q = query(
     txColRef,
     where('channelId', '==', id),
     where('purchaseOrSale', '==', 'sold')
   )
   const snap = await getDocs(q)
-  const deletePromises = snap.docs.map(d => deleteDoc(doc(db, 'transactions', d.id)))
+  const deletePromises = snap.docs.map(d => deleteDoc(doc(db, 'transaction', d.id)))
   await Promise.all(deletePromises)
 
   // channel status back to purchased
@@ -713,7 +713,7 @@ export const returnChannel = async (id) => {
 
 // hacked channel — fetch buyer from sold transaction, create hacked transaction
 export const hackChannel = async (id) => {
-  const txColRef = collection(db, 'transactions')
+  const txColRef = collection(db, 'transaction')
   const q = query(
     txColRef,
     where('channelId', '==', id),

@@ -12,10 +12,10 @@ import { useState ,useEffect } from "react";
 
 // ─── query keys ──────────────────────────────────────────────────────────────
 export const transactionKeys = {
-  all:       () => ['transactions', 'all'],
-  purchases: () => ['transactions', 'purchases'],
-  sales:     () => ['transactions', 'sales'],
-  byChannel: (id) => ['transactions', 'channel', id],
+  all:       () => ['transaction', 'all'],
+  purchases: () => ['transaction', 'purchases'],
+  sales:     () => ['transaction', 'sales'],
+  byChannel: (id) => ['transaction', 'channel', id],
 }
 
 // ─── hooks ───────────────────────────────────────────────────────────────────
@@ -38,7 +38,7 @@ export const useSaleTransactions = () => {
 
   useEffect(() => {
     const q = query(
-      collection(db, 'transactions'),
+      collection(db, 'transaction'),
       where('purchaseOrSale', '==', 'sold')
     );
 

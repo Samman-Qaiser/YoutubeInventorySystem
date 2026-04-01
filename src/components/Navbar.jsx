@@ -41,7 +41,11 @@ export default function Navbar({ collapsed, setCollapsed, mobileMenuOpen, setMob
               Abbas<span className="text-emerald-500">Stock</span>
             </span>
           </div>
-          {collapsed && <Store className="text-emerald-500 mx-auto hidden md:block" size={22} />}
+       {collapsed && (
+    <div className="hidden md:flex items-center justify-center w-full">
+      <Store className="text-emerald-500 shrink-0" size={24} /> 
+    </div>
+  )}
           
           <button
             onClick={() => setCollapsed(!collapsed)}
