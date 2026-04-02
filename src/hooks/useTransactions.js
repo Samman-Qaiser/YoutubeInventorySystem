@@ -25,11 +25,7 @@ export const useAllTransactions = () =>
     queryFn:  fetchAllTransactions,
   })
 
-export const usePurchaseTransactions = () =>
-  useQuery({
-    queryKey: transactionKeys.purchases(),
-    queryFn:  fetchPurchaseTransactions,
-  })
+
 
 export const useSaleTransactions = () => {
   const [data, setData]         = useState([]);
@@ -61,7 +57,66 @@ export const useSaleTransactions = () => {
 
   return { data, isLoading, error };
 };
+export const usePurchaseTransactions = () => {
+  const [data, setData]         = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError]       = useState(null);
 
+  useEffect(() => {
+    const q = query(
+      collection(db, 'transaction'),
+      where('purchaseOrSale', '==', 'purchased')
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setData(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setIsLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.error('useSaleTransactions snapshot error:', err);
+        setError(err);
+        setIsLoading(false);
+      }
+    );
+
+    return () => unsub();
+  }, []);
+
+  return { data, isLoading, error };
+};
+export const HackedTransactions = () => {
+  const [data, setData]         = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError]       = useState(null);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'transaction'),
+      where('purchaseOrSale', '==', 'purchased')
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setData(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setIsLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.error('useSaleTransactions snapshot error:', err);
+        setError(err);
+        setIsLoading(false);
+      }
+    );
+
+    return () => unsub();
+  }, []);
+
+  return { data, isLoading, error };
+};
 export const useTransactionsByChannel = (channelId) =>
   useQuery({
     queryKey: transactionKeys.byChannel(channelId),

@@ -40,8 +40,8 @@ export function avatarColor(id) {
 export const STATUS_STYLES = {
   purchased:  "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400",
   sold:       "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400",
-  terminatewithoutloss: "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400",
-  terminatewithloss: "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400",
+  terminatedWithoutLoss: "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400",
+  terminatedWithLoss: "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400",
   hacked:     "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400",
 };
 export const MONO_STYLES = {

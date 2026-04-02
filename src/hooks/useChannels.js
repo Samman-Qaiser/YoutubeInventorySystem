@@ -1,5 +1,5 @@
 // src/hooks/useChannels.js
-
+import { useSaleTransactions } from './useTransactions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   fetchAllChannels,
@@ -22,12 +22,12 @@ import {
   returnChannel,
   hackChannel,
   fetchChannelCounts,
-  fetchTotalPurchases, fetchTotalSales, fetchMonthlyProfitLoss, fetchCurrentMonthSales, fetchCurrentMonthPurchases, fetchCurrentMonthProfit
+  fetchTotalPurchases, fetchTotalSales,  fetchCurrentMonthSales, fetchCurrentMonthPurchases, fetchCurrentMonthProfit
   
 } from '../services/channel.services'
 // useChannels.js ke top pe existing imports mein add karo:
 import { useState, useEffect ,useMemo} from "react";
-import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot ,where,getDocs} from "firebase/firestore";
 import { db } from "../config/firebase";
 // ─── query keys ──────────────────────────────────────────────────────────────
 // centralized — ek jagah se invalidate hoga sab
@@ -173,21 +173,33 @@ export const useLastMonthProfit = () =>
   })
 
 // Monthly Profit/Loss Hook
-export const useMonthlyProfitLoss = () => {
-  const { data: channels = [], isLoading, error } = useAllChannels()
 
+export const useMonthlyProfitLoss = () => {
+  const { data: channels = [],    isLoading: chLoading  } = useAllChannels()
+  const { data: transactions = [], isLoading: txLoading  } = useSaleTransactions()
+ 
   const monthlyData = useMemo(() => {
     if (!channels.length) return []
-
+ 
+    // ── Transaction map: channelId → transaction ──────────────────────────────
+    // Fast O(1) lookup — sold transaction se createdAt milega
+    const txMap = new Map()
+    transactions.forEach((tx) => {
+      if (tx.channelId && tx.purchaseOrSale === 'sold') {
+        txMap.set(tx.channelId, tx)
+      }
+    })
+ 
     const result = {}
-
+ 
     channels.forEach((ch) => {
-      // ── PURCHASES: createdAt ke month mein ──────────────────────────────
+ 
+      // ── PURCHASES: createdAt ke month mein ───────────────────────────────────
       const createdDate = ch.createdAt?.toDate ? ch.createdAt.toDate() : null
       if (createdDate) {
         const key       = `${createdDate.getFullYear()}-${createdDate.getMonth() + 1}`
         const monthName = createdDate.toLocaleString('default', { month: 'short', year: 'numeric' })
-
+ 
         if (!result[key]) {
           result[key] = {
             month: monthName, year: createdDate.getFullYear(),
@@ -199,21 +211,39 @@ export const useMonthlyProfitLoss = () => {
         result[key].purchases     += Number(ch.purchasePrice) || 0
         result[key].purchaseCount += 1
       }
-
-      // ── SALES + PROFIT: sirf completed channels ──────────────────────────
-      const statusSet = new Set(['sold', 'terminatewithloss', 'hacked'])
+ 
+      // ── SALES + PROFIT: sirf completed channels ───────────────────────────────
+      const statusSet = new Set(['sold', 'terminatedWithLoss', 'hacked'])
       if (!statusSet.has(ch.status)) return
-
+ 
+      // ── Activity date priority ────────────────────────────────────────────────
+      // 1. Transaction collection ka createdAt (most accurate for sold)
+      // 2. channel.soldAt
+      // 3. channel.terminatedAt / hackedAt
+      // 4. channel.updatedAt (fallback)
       let activityDate = null
-      if (ch.soldAt)            activityDate = ch.soldAt.toDate()
-      else if (ch.terminatedAt) activityDate = ch.terminatedAt.toDate()
-      else if (ch.hackedAt)     activityDate = ch.hackedAt.toDate()
-      else if (ch.updatedAt)    activityDate = ch.updatedAt.toDate()
+ 
+      const tx = txMap.get(ch.id)
+      if (tx?.createdAt) {
+        // Firestore timestamp ho sakta hai ya plain object
+        activityDate = tx.createdAt?.toDate
+          ? tx.createdAt.toDate()
+          : new Date(tx.createdAt)
+      } else if (ch.soldAt) {
+        activityDate = ch.soldAt?.toDate ? ch.soldAt.toDate() : new Date(ch.soldAt)
+      } else if (ch.terminatedAt) {
+        activityDate = ch.terminatedAt?.toDate ? ch.terminatedAt.toDate() : new Date(ch.terminatedAt)
+      } else if (ch.hackedAt) {
+        activityDate = ch.hackedAt?.toDate ? ch.hackedAt.toDate() : new Date(ch.hackedAt)
+      } else if (ch.updatedAt) {
+        activityDate = ch.updatedAt?.toDate ? ch.updatedAt.toDate() : new Date(ch.updatedAt)
+      }
+ 
       if (!activityDate) return
-
+ 
       const key       = `${activityDate.getFullYear()}-${activityDate.getMonth() + 1}`
       const monthName = activityDate.toLocaleString('default', { month: 'short', year: 'numeric' })
-
+ 
       if (!result[key]) {
         result[key] = {
           month: monthName, year: activityDate.getFullYear(),
@@ -222,32 +252,43 @@ export const useMonthlyProfitLoss = () => {
           soldCount: 0, purchaseCount: 0,
         }
       }
-
+ 
       const purchase = Number(ch.purchasePrice) || 0
       const sale     = Number(ch.salePrice)     || 0
-
+ 
+      // Sales: sirf sold channels
       if (ch.status === 'sold') {
         result[key].sales     += sale
         result[key].soldCount += 1
       }
-
+ 
+      // Profit — same formula as before
       switch (ch.status) {
         case 'sold':
-          result[key].profit += sale - purchase; break
-        case 'terminatewithloss':
-          result[key].profit += -purchase; break
+          result[key].profit += sale - purchase
+          break
+        case 'terminatedWithLoss':
+          result[key].profit += -purchase
+          break
         case 'hacked':
-          result[key].profit += -purchase; break
-        default: break
+          result[key].profit += -purchase
+          break
+        default:
+          break
       }
     })
-
+ 
+    // Sort: latest first
     return Object.values(result).sort((a, b) =>
       a.year !== b.year ? b.year - a.year : b.monthNumber - a.monthNumber
     )
-  }, [channels])
-
-  return { data: monthlyData, isLoading, error }
+  }, [channels, transactions])
+ 
+  return {
+    data:      monthlyData,
+    isLoading: chLoading || txLoading,  // dono load hon tab tak loading
+    error:     null,
+  }
 }
 
 // Total Sales Hook
@@ -480,7 +521,7 @@ export const useTerminateWithLoss = () => {
       )
     qc.setQueryData(channelKeys.all(), (old) =>
   old?.map((ch) =>
-    ch.id === id ? { ...ch, status: 'terminatewithloss', terminationType: 'withloss' } : ch
+    ch.id === id ? { ...ch, status: 'terminatedWithloss', terminationType: 'withloss' } : ch
   ) ?? []
 )
       return { prevPurchased, prevAll }
@@ -628,7 +669,7 @@ export const useCurrentMonthProfit = () =>
     staleTime: 2 * 60 * 1000,
     gcTime:    10 * 60 * 1000,
     select: (channels) => {
-      const statusSet = new Set(['sold', 'terminatewithoutloss', 'terminatewithloss', 'hacked'])
+      const statusSet = new Set(['sold', 'terminatedWithoutLoss', 'terminatedWithLoss', 'hacked'])
       const relevant  = channels.filter((ch) => {
         if (!statusSet.has(ch.status)) return false
         const date = ch.soldAt ?? ch.terminatedAt ?? ch.hackedAt ?? ch.updatedAt ?? ch.createdAt
@@ -646,7 +687,7 @@ export const useCurrentMonthProfit = () =>
             const p = sale - purchase; total += p; breakdown.sold += p; break
           }
         
-          case 'terminatewithloss': {
+          case 'terminatedwithLoss': {
             const l = -purchase; total += l; breakdown.terminateWithLoss += l; break
           }
           case 'hacked': {

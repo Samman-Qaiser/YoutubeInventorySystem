@@ -13,7 +13,7 @@ import Toast from "../components/Toast";
 
 // ─── Backend Imports ──────────────────────────────────────────────────────────
 import { useAllChannels, useSoldChannels } from "../hooks/useChannels";
-import { useSaleTransactions } from "../hooks/useTransactions.js";
+import { useSaleTransactions ,usePurchaseTransactions } from "../hooks/useTransactions.js";
 import { useTransferOwnership, useReturnChannelMutation, useHackChannelMutation } from "../hooks/useChannels";
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -48,7 +48,11 @@ function fmtDate(s) {
   const date = s?.toDate ? s.toDate() : new Date(s);
   return date.toLocaleDateString("en-PK", { day:"2-digit", month:"short", year:"numeric" }); 
 }
-function getInitials(n="") { return n.split(" ").slice(0,2).map(w=>w[0]||"").join("").toUpperCase()||"CH"; }
+function getInitials(name) {
+  if (!name) return "?";
+  return name.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase();
+}
+
 
 // Helper function to check if channel is older than 7 days
 function isOlderThan7Days(createdAt) {
@@ -383,6 +387,8 @@ export default function Sales() {
     [allChannels]
   );
   const { data: saleTransactions = [], isLoading: loadingTx } = useSaleTransactions();
+  
+   const { data: purchaseTransactions = [], isLoading: loadingPurchaseTx } = usePurchaseTransactions();
   const { mutate: transferOwnership, isPending: isTransferring } = useTransferOwnership();
   const { mutate: returnChannel, isPending: isReturning } = useReturnChannelMutation();
   const { mutate: hackChannel, isPending: isHacking } = useHackChannelMutation();
@@ -390,22 +396,31 @@ export default function Sales() {
   const [mergedSalesData, setMergedSalesData] = useState([]);
   
   // Update merged data when sold or transactions change
-  useEffect(() => {
+useEffect(() => {
     const merged = sold.map(channel => {
-      const tx = saleTransactions.find(t => t.channelId === channel.id);
-      const finalDate = tx?.createdAt || channel.soldAt || channel.createdAt;
+      // Find the sale transaction (when channel was sold to customer)
+      const saleTx = saleTransactions.find(t => t.channelId === channel.id);
+      
+      // ✅ Find the purchase transaction (when you bought the channel)
+      // This gives you the original seller's name (customerName from purchase)
+      const purchaseTx = purchaseTransactions.find(t => t.channelId === channel.id);
+      
+      const finalDate = saleTx?.createdAt || channel.soldAt || channel.createdAt;
       
       return {
         ...channel,
-        buyerName: tx ? tx.buyerName : (channel.buyerName || 'N/A'),
+        // ✅ Use customerName from purchase transaction as seller name
+        sellerName: purchaseTx ? purchaseTx.customerName : (channel.sellerName || 'Unknown Seller'),
+        // Buyer name from sale transaction
+        customerName: saleTx ? saleTx.customerName : (channel.customerName || 'N/A'),
         soldAtDate: finalDate,
-        salePrice: tx ? tx.price : (channel.salePrice || 0),
+        salePrice: saleTx ? saleTx.price : (channel.salePrice || 0),
         ownershipStatus: channel.ownerShip || false,
         createdAt: channel.createdAt || new Date()
       };
     });
     setMergedSalesData(merged);
-  }, [sold, saleTransactions]);
+  }, [sold, saleTransactions, purchaseTransactions]);
   
   // Overall stats
   const totalRevenue  = useMemo(() => sold.reduce((s,c) => s + (Number(c.salePrice)||0), 0), [sold]);
@@ -446,7 +461,7 @@ export default function Sales() {
       
       if (searchName && !ch.channelName?.toLowerCase().includes(searchName.toLowerCase())) return false;
       if (searchSeller && !(ch.sellerName||"").toLowerCase().includes(searchSeller.toLowerCase())) return false;
-      if (searchBuyer && !(ch.buyerName||"").toLowerCase().includes(searchBuyer.toLowerCase())) return false;
+      if (searchBuyer && !(ch.customerName||"").toLowerCase().includes(searchBuyer.toLowerCase())) return false;
       if (category !== "All" && ch.category !== category) return false;
       if (monoFilter !== "All" && ch.monetizationStatus !== monoFilter) return false;
       if (ownFilter !== "All" && ownerLabel !== ownFilter) return false;
@@ -791,7 +806,7 @@ export default function Sales() {
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="flex items-center gap-1.5">
                             <ShoppingBag size={12} className="text-gray-600 dark:text-gray-100 shrink-0"/>
-                            <span className="text-xs text-gray-600 dark:text-gray-300 font-medium">{ch.buyerName||"—"}</span>
+                            <span className="text-xs text-gray-600 dark:text-gray-300 font-medium">{ch.customerName||"—"}</span>
                           </div>
                         </td>
                         

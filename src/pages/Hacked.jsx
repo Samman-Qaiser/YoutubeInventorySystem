@@ -11,6 +11,7 @@ import {
 import ChannelStatCard from "../components/StatCard"
 import TableSkeleton from "../Sekeleton/TableSkeleton.jsx"
 import ViewChannelDrawer from "../components/ViewChannelDrawer"
+import { usePurchaseTransactions } from "../hooks/useTransactions.js"
 
 // ─── constants ────────────────────────────────────────────────────────────────
 const MONTHS  = ["January","February","March","April","May","June","July","August","September","October","November","December"]
@@ -20,8 +21,8 @@ const PER_PAGE = 10
 const STATUS_FILTER_OPTIONS = [
   { value: "all",                   label: "All" },
   { value: "hacked",                label: "Hacked" },
-  { value: "terminatewithloss",   label: "Terminate with Loss" },
-  { value: "terminatewithoutloss",label: "Terminate without Loss" },
+  { value: "terminatedWithLoss",   label: "Terminate with Loss" },
+  { value: "terminatedWithoutLoss",label: "Terminate without Loss" },
 ]
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -49,11 +50,11 @@ const STATUS_BADGE = {
     cls: "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400",
     label: "Hacked",
   },
-  terminatewithloss: {
+  terminatedWithLoss: {
     cls: "bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400",
     label: "Terminated (Loss)",
   },
-  terminatewithoutloss: {
+  terminatedWithoutLoss: {
     cls: "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400",
     label: "Terminated (No Loss)",
   },
@@ -81,14 +82,26 @@ function EmptyState() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function HackedChannels() {
   const { data: allChannels, isLoading, isError } = useAllChannels()
-
+  const { data: purchaseTransactions = [], isLoading: loadingTx } = usePurchaseTransactions()
+ const sellerNameMap = useMemo(() => {
+  const map = new Map()
+  purchaseTransactions.forEach(tx => {
+    if (tx.channelId && tx.customerName) {
+      map.set(tx.channelId, tx.customerName)
+    }
+  })
+  return map
+}, [purchaseTransactions])
   // Only hacked + terminated channels
-  const channels = useMemo(
-    () => (allChannels ?? []).filter(ch =>
-      ["hacked", "terminatewithloss", "terminatewithoutloss"].includes(ch.status)
-    ),
-    [allChannels]
-  )
+ const channels = useMemo(
+  () => (allChannels ?? [])
+    .filter(ch => ["hacked", "terminatedWithLoss", "terminatedWithoutLoss"].includes(ch.status))
+    .map(ch => ({
+      ...ch,
+      sellerName: sellerNameMap.get(ch.id) || ch.sellerName || 'N/A'
+    })),
+  [allChannels, sellerNameMap]
+)
 
   // ── Filters state ────────────────────────────────────────────────────────────
   const [filtersOpen,  setFiltersOpen]  = useState(false)
@@ -136,7 +149,7 @@ export default function HackedChannels() {
 
       if (ch.status === "hacked") {
         totalLoss += purchase          // full purchase lost
-      } else if (ch.status === "terminatewithloss") {
+      } else if (ch.status === "terminatedWithLoss") {
         totalLoss += purchase
       } 
     })
@@ -152,7 +165,7 @@ export default function HackedChannels() {
   const activeFilters = [searchName, statusFilter !== "all", yearFilter !== "all", monthFilter !== "all"].filter(Boolean).length
   const clearFilters  = () => { setSearchName(""); setStatusFilter("all"); setYearFilter("all"); setMonthFilter("all"); setPage(1) }
 
-  if (isLoading) return <TableSkeleton />
+if (isLoading || loadingTx) return <TableSkeleton />
   if (isError)   return (
     <div className="flex items-center justify-center py-32">
       <p className="text-red-500 text-sm">Failed to load channels. Please refresh.</p>

@@ -9,7 +9,7 @@ const inputCls =
   "placeholder-gray-300 dark:placeholder-gray-600 transition-all duration-150";
 
 export default function SaleModal({ channel, open, onClose, onConfirm, isLoading = false }) {
-  const [buyerName, setBuyerName] = useState("");
+  const [customerName, setcustomerName] = useState("");
   const [salePrice, setSalePrice] = useState("");
   const [contact, setContact] = useState("");
   const [errors, setErrors] = useState({});
@@ -19,7 +19,7 @@ export default function SaleModal({ channel, open, onClose, onConfirm, isLoading
   if (channel && channel.id !== lastChannelId) {
     setLastChannelId(channel.id);
     setSalePrice(channel.salePrice != null ? String(channel.salePrice) : "");
-    setBuyerName("");
+    setcustomerName("");
     setContact("");
     setErrors({});
   }
@@ -37,7 +37,7 @@ export default function SaleModal({ channel, open, onClose, onConfirm, isLoading
 
   const validate = () => {
     const err = {};
-    if (!buyerName.trim()) err.buyerName = "Buyer name is required";
+    if (!customerName.trim()) err.customerName = "customer name is required";
     if (!salePrice || Number(salePrice) <= 0)
       err.salePrice = "Valid sale price is required";
     setErrors(err);
@@ -48,7 +48,7 @@ export default function SaleModal({ channel, open, onClose, onConfirm, isLoading
     if (isLoading) return; // Don't submit if already loading
     if (!validate()) return;
     onConfirm({
-      buyerName: buyerName.trim(),
+      customerName: customerName.trim(),
       salePrice: Number(salePrice),
       contactNumber: contact.trim(),
     });
@@ -114,10 +114,10 @@ export default function SaleModal({ channel, open, onClose, onConfirm, isLoading
 
               {/* Body */}
               <div className="px-6 pb-4 flex flex-col gap-4">
-                {/* Buyer Name */}
+                {/* customer Name */}
                 <div>
                   <label className="flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Buyer Name{" "}
+                    customer Name{" "}
                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 mb-0.5" />
                   </label>
                   <div className="relative">
@@ -126,20 +126,20 @@ export default function SaleModal({ channel, open, onClose, onConfirm, isLoading
                       className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 pointer-events-none"
                     />
                     <input
-                      value={buyerName}
+                      value={customerName}
                       onChange={(e) => {
-                        setBuyerName(e.target.value);
-                        if (errors.buyerName)
-                          setErrors((v) => ({ ...v, buyerName: "" }));
+                        setcustomerName(e.target.value);
+                        if (errors.customerName)
+                          setErrors((v) => ({ ...v, customerName: "" }));
                       }}
                       disabled={isLoading}
-                      placeholder="Enter buyer's full name"
+                      placeholder="Enter customer's full name"
                       className={inputCls + " pl-8 disabled:opacity-50 disabled:cursor-not-allowed"}
                     />
                   </div>
-                  {errors.buyerName && (
+                  {errors.customerName && (
                     <p className="text-[11px] text-red-500 mt-1">
-                      {errors.buyerName}
+                      {errors.customerName}
                     </p>
                   )}
                 </div>

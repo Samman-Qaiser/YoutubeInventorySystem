@@ -223,7 +223,7 @@ export const fetchChannelById = async (id) => {
 export const fetchTotalProfit = async () => {
   const q = query(
     colRef(),
-    where('status', 'in', ['sold', 'terminatewithoutloss', 'terminatewithloss', 'hacked'])
+    where('status', 'in', ['sold', 'terminatedWithoutLoss', 'terminatedWithLoss', 'hacked'])
   )
   const snap = await getDocs(q)
   const channels = snap.docs.map(mapDoc)
@@ -246,7 +246,7 @@ export const fetchTotalProfit = async () => {
         break
    
         
-      case 'terminatewithloss':
+      case 'terminatedWithLoss':
         const loss = -purchase
         total += loss
         terminateWithLossLoss += loss
@@ -282,7 +282,7 @@ export const fetchThisWeekProfit = async () => {
   
   const q = query(
     colRef(),
-    where('status', 'in', ['sold', 'terminatewithoutloss', 'terminatewithloss', 'hacked']),
+    where('status', 'in', ['sold', 'terminatedWithoutLoss', 'terminatedWithLoss', 'hacked']),
     where('updatedAt', '>=', startOfWeek)
   )
   const snap = await getDocs(q)
@@ -307,13 +307,8 @@ export const fetchThisWeekProfit = async () => {
         breakdown.sold += profit
         break
         
-      case 'terminatewithoutloss':
-        const termProfit = sale - purchase
-        total += termProfit
-        breakdown.terminateWithoutLoss += termProfit
-        break
         
-      case 'terminatewithloss':
+      case 'terminatdWithLoss':
         const loss = -purchase
         total += loss
         breakdown.terminateWithLoss += loss
@@ -339,7 +334,7 @@ export const fetchLastMonthProfit = async () => {
   
   const q = query(
     colRef(),
-    where('status', 'in', ['sold', 'terminatewithoutloss', 'terminatewithloss', 'hacked']),
+    where('status', 'in', ['sold', 'terminatedWithoutLoss', 'terminatedWithLoss', 'hacked']),
     where('updatedAt', '>=', start),
     where('updatedAt', '<=', end)
   )
@@ -365,13 +360,9 @@ export const fetchLastMonthProfit = async () => {
         breakdown.sold += profit
         break
         
-      case 'terminatewithoutloss':
-        const termProfit = sale - purchase
-        total += termProfit
-        breakdown.terminateWithoutLoss += termProfit
-        break
+
         
-      case 'terminatewithloss':
+      case 'terminatedWithLoss':
         const loss = -purchase
         total += loss
         breakdown.terminateWithLoss += loss
@@ -390,98 +381,7 @@ export const fetchLastMonthProfit = async () => {
   return { total, breakdown, channels }
 }
 
-// ─── MONTHLY BREAKDOWN (Har month ka alag) ───────────────────────────────
-export const fetchMonthlyProfitLoss = async () => {
-  // Fetch ALL channels — no status filter, purchases bhi chahiye
-  const snap = await getDocs(query(colRef()))
-  const channels = snap.docs.map(mapDoc)
- 
-  const monthlyData = {}
- 
-  channels.forEach((ch) => {
-    // ── PURCHASES: har channel createdAt ke month mein count hoga ────────────
-    const createdDate = ch.createdAt?.toDate ? ch.createdAt.toDate() : null
-    if (createdDate) {
-      const key       = `${createdDate.getFullYear()}-${createdDate.getMonth() + 1}`
-      const monthName = createdDate.toLocaleString('default', { month: 'short', year: 'numeric' })
- 
-      if (!monthlyData[key]) {
-        monthlyData[key] = {
-          month:               monthName,
-          year:                createdDate.getFullYear(),
-          monthNumber:         createdDate.getMonth() + 1,
-          sales:               0,
-          purchases:           0,
-          profit:              0,
-          soldCount:           0,
-          purchaseCount:       0,
-        }
-      }
-      monthlyData[key].purchases    += Number(ch.purchasePrice) || 0
-      monthlyData[key].purchaseCount += 1
-    }
- 
-    // ── SALES + PROFIT: sirf completed channels ───────────────────────────────
-    const statusSet = new Set(['sold', 'terminatewithloss', 'hacked'])  // ✅ removed terminatewithoutloss
-    if (!statusSet.has(ch.status)) return
- 
-    // activity date: soldAt → terminatedAt → hackedAt → updatedAt
-    let activityDate = null
-    if (ch.soldAt)       activityDate = ch.soldAt.toDate()
-    else if (ch.terminatedAt) activityDate = ch.terminatedAt.toDate()
-    else if (ch.hackedAt)     activityDate = ch.hackedAt.toDate()
-    else if (ch.updatedAt)    activityDate = ch.updatedAt.toDate()
-    if (!activityDate) return
- 
-    const key       = `${activityDate.getFullYear()}-${activityDate.getMonth() + 1}`
-    const monthName = activityDate.toLocaleString('default', { month: 'short', year: 'numeric' })
- 
-    if (!monthlyData[key]) {
-      monthlyData[key] = {
-        month:         monthName,
-        year:          activityDate.getFullYear(),
-        monthNumber:   activityDate.getMonth() + 1,
-        sales:         0,
-        purchases:     0,
-        profit:        0,
-        soldCount:     0,
-        purchaseCount: 0,
-      }
-    }
- 
-    const purchase = Number(ch.purchasePrice) || 0
-    const sale     = Number(ch.salePrice)     || 0
- 
-    // Sales amount (only for sold channels)
-    if (ch.status === 'sold') {
-      monthlyData[key].sales     += sale
-      monthlyData[key].soldCount += 1
-    }
- 
-    // Profit calculation — terminatewithoutloss IGNORED
-    switch (ch.status) {
-      case 'sold': {
-        monthlyData[key].profit += sale - purchase
-        break
-      }
-      case 'terminatewithloss': {
-        monthlyData[key].profit += -purchase
-        break
-      }
-      case 'hacked': {
-        monthlyData[key].profit += -purchase
-        break
-      }
-      default: break
-    }
-  })
- 
-  // Sort latest first
-  return Object.values(monthlyData).sort((a, b) => {
-    if (a.year !== b.year) return b.year - a.year
-    return b.monthNumber - a.monthNumber
-  })
-}
+
 // ─── ADD THESE HELPER FUNCTIONS ALSO ─────────────────────────────────────
 export const fetchTotalSales = async () => {
   const q = query(
@@ -519,8 +419,8 @@ export const fetchChannelCounts = async () => {
     total: channels.length,
     sold: channels.filter(c => c.status === 'sold').length,
     purchased: channels.filter(c => c.status === 'purchased').length,
-    terminatedWithLoss: channels.filter(c => c.status === 'terminatewithloss').length,
-    terminatedWithoutLoss: channels.filter(c => c.status === 'terminatewithoutloss').length,
+    terminatedWithLoss: channels.filter(c => c.status === 'terminatedWithLoss').length,
+    terminatedWithoutLoss: channels.filter(c => c.status === 'terminatedWithoutLoss').length,
     hacked: channels.filter(c => c.status === 'hacked').length
   }
 }
@@ -546,42 +446,73 @@ export const fetchCurrentMonthProfit = async () => {
 }
 // ─── WRITE operations ─────────────────────────────────────────────────────────
 
-// add new channel — status always 'purchased', ownerShip always false
-// createChannel function update karo — transaction collection mein bhi add ho
-export const createChannel = async (data) => {
-  const payload = {
-    ...data,
-    status:          'purchased',
-    ownerShip:       false,
-    createdAt:       serverTimestamp(),
-  }
-  const docRef = await addDoc(colRef(), payload)
 
-  // ✅ transaction automatically create karo
-  const txColRef = collection(db, 'transaction')
+export const createChannel = async (data) => {
+
+  const { sellerName, contactNumber, ...channelData } = data;
+  
+  // Create channel WITH purchasePrice and salePrice
+  const channelPayload = {
+    ...channelData,  // This includes purchasePrice, salePrice, and all other fields
+    status: 'purchased',
+    ownerShip: false,
+    createdAt: serverTimestamp(),
+  };
+  
+  const docRef = await addDoc(colRef(), channelPayload);
+
+  // Create transaction with sellerName as customerName
+  const txColRef = collection(db, 'transaction');
   await addDoc(txColRef, {
     channelId:      docRef.id,
     purchaseOrSale: 'purchased',
-    price:          Number(data.purchasePrice) || 0,
-    sellerName:     data.sellerName            || '',
-    contactNumber:  data.contactNumber         || '',
+    price:          Number(channelData.purchasePrice) || 0,  // from channelData
+    customerName:   sellerName || '',
+    contactNumber:  contactNumber || '',
     createdAt:      serverTimestamp(),
-  })
+  });
 
   return {
     id: docRef.id,
-    ...payload,
+    ...channelPayload,  // This includes purchasePrice
     createdAt: Timestamp.now(),
-  }
-}
+  };
+};
 
 // update channel fields
 export const updateChannel = async (id, data) => {
   const ref = doc(db, COL, id)
+  
+  // ✅ Separate seller name from other data
+  const { sellerName, originalSellerName, ...channelData } = data
+  
+  // ✅ Update channel document
   await updateDoc(ref, {
-    ...data,
+    ...channelData,
     updatedAt: serverTimestamp(),
   })
+  
+  // ✅ If seller name has changed, update the purchase transaction
+  if (sellerName && sellerName !== originalSellerName) {
+    const txColRef = collection(db, 'transaction')
+    const q = query(
+      txColRef,
+      where('channelId', '==', id),
+      where('purchaseOrSale', '==', 'purchased')
+    )
+    const snap = await getDocs(q)
+    
+    if (!snap.empty) {
+      const purchaseTxDoc = snap.docs[0]
+      const purchaseTxRef = doc(db, 'transaction', purchaseTxDoc.id)
+      
+      // ✅ Update the customerName (seller name) in purchase transaction
+      await updateDoc(purchaseTxRef, {
+        customerName: sellerName,
+        updatedAt: serverTimestamp(),
+      })
+    }
+  }
 }
 
 export const deleteChannel = async (id) => {
@@ -621,12 +552,11 @@ export const deleteChannel = async (id) => {
 };
 
 // mark channel as sold
-export const markChannelSold = async (id, salePrice, buyerName, contactNumber) => {
+export const markChannelSold = async (id, salePrice, customerName, contactNumber) => {
   const ref = doc(db, COL, id)
   await updateDoc(ref, {
     status:    'sold',
     salePrice,
-    soldAt:    serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
   // also create transaction record
@@ -635,7 +565,7 @@ export const markChannelSold = async (id, salePrice, buyerName, contactNumber) =
     channelId:       id,
     purchaseOrSale:  'sold',
     price:           salePrice,
-    buyerName:    buyerName ?? '',
+    customerName:    customerName ?? '',
     contactNumber:   contactNumber ?? '',
     createdAt:       serverTimestamp(),
   })
@@ -644,39 +574,64 @@ export const markChannelSold = async (id, salePrice, buyerName, contactNumber) =
 // terminate with loss — profit NOT counted
 export const terminateWithLoss = async (id, channelData) => {
   const ref = doc(db, COL, id)
-
-  // Only update the status — don't include terminateAt or terminateType
+  
+  // ✅ Purchase transaction se seller name fetch karo
+  const txColRef = collection(db, 'transaction')
+  const q = query(
+    txColRef,
+    where('channelId', '==', id),
+    where('purchaseOrSale', '==', 'purchased')
+  )
+  const snap = await getDocs(q)
+  const purchaseTx = snap.docs[0]?.data()
+  const sellerName = purchaseTx?.customerName || ''
+  const sellerContact = purchaseTx?.contactNumber || ''
+  
+  // Update channel status
   await updateDoc(ref, {
-    status: 'terminatewithloss',
-    updatedAt: serverTimestamp(), // optional
+    status: 'terminatedWithLoss',
+    terminatedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   })
 
+  // Create terminate transaction
   await addDoc(collection(db, 'transaction'), {
     channelId:      id,
-    channelName:    channelData.channelName || '',
-    purchaseOrSale: 'terminatewithloss',
+    purchaseOrSale: 'terminatedWithLoss',
     price:          Number(channelData.purchasePrice) || 0,
-    sellerName:     channelData.sellerName || '',
-    contactNumber:  channelData.contactNumber || '',
+    customerName:   sellerName,  // ✅ From purchase transaction
+    contactNumber:  sellerContact,
     createdAt:      serverTimestamp(),
   })
 }
 
 export const terminateWithoutLoss = async (id, channelData) => {
   const ref = doc(db, COL, id)
-
+  
+  // ✅ Purchase transaction se seller name fetch karo
+  const txColRef = collection(db, 'transaction')
+  const q = query(
+    txColRef,
+    where('channelId', '==', id),
+    where('purchaseOrSale', '==', 'purchased')
+  )
+  const snap = await getDocs(q)
+  const purchaseTx = snap.docs[0]?.data()
+  const sellerName = purchaseTx?.customerName || ''
+  const sellerContact = purchaseTx?.contactNumber || ''
+  
   await updateDoc(ref, {
-    status: 'terminatewithoutloss',
-    updatedAt: serverTimestamp(), // optional
+    status: 'terminatedWithoutLoss',
+    terminatedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   })
 
   await addDoc(collection(db, 'transaction'), {
     channelId:      id,
-    channelName:    channelData.channelName || '',
-    purchaseOrSale: 'terminatewithoutloss',
-    price:          Number(channelData.salePrice) || 0,
-    sellerName:     channelData.sellerName || '',
-    contactNumber:  channelData.contactNumber || '',
+    purchaseOrSale: 'terminatedWithoutLoss',
+    price:          Number(channelData.purchasePrice) || 0,  // ⚠️ Without loss mein sale price use hota hai
+    customerName:   sellerName,  // ✅ From purchase transaction
+    contactNumber:  sellerContact,
     createdAt:      serverTimestamp(),
   })
 }
@@ -714,35 +669,32 @@ export const returnChannel = async (id) => {
 // hacked channel — fetch buyer from sold transaction, create hacked transaction
 export const hackChannel = async (id) => {
   const txColRef = collection(db, 'transaction')
-  const q = query(
+  
+  // Step 1: PURCHASE transaction find karo (seller info ke liye)
+  const purchaseQuery = query(
     txColRef,
     where('channelId', '==', id),
-    where('purchaseOrSale', '==', 'sold')
+    where('purchaseOrSale', '==', 'purchased')
   )
-  const snap = await getDocs(q)
-  const soldTx = snap.docs[0]?.data()
-  
-  // Channel document se sellerName fetch karo
+  const purchaseSnap = await getDocs(purchaseQuery)
+  const purchaseTx = purchaseSnap.docs[0]?.data()  // ✅ Better variable name
+
   const channelRef = doc(db, COL, id)
   const channelSnap = await getDoc(channelRef)
   const channelData = channelSnap.data()
-  
-  // channel status hacked
+ 
   await updateDoc(channelRef, {
     status:    'hacked',
+    hackedAt:  serverTimestamp(),  // ✅ Add hacked timestamp
     updatedAt: serverTimestamp(),
   })
   
-  // hacked transaction create karo
   await addDoc(txColRef, {
     channelId:      id,
-    channelName:    soldTx?.channelName || channelData?.channelName || '',
     purchaseOrSale: 'hacked',
-    price:          soldTx?.price || channelData?.salePrice || 0,
-    buyerName:      soldTx?.customerName || soldTx?.buyerName || channelData?.buyerName || '',
-    sellerName:     channelData?.sellerName || '',  // ✅ Directly channel se le lo
-    contactNumber:  soldTx?.contactNumber || channelData?.contactNumber || '',
-    originalSalePrice: soldTx?.price || channelData?.salePrice || 0,
-    hackedAt:       serverTimestamp(),
+    price:          purchaseTx?.price || channelData?.purchasePrice || 0,
+    customerName:   purchaseTx?.customerName || '',  
+    contactNumber:  purchaseTx?.contactNumber || channelData?.contactNumber || '',
+    createdAt:      serverTimestamp(),
   })
 }

@@ -19,14 +19,18 @@ export function useOverdueChannels() {
     return diffDays > 7;
   };
 
-  // Filter channels with ownership false AND older than 7 days
-  // Include ALL channels (purchased, sold, etc.) that have ownership false
+  // Filter channels with:
+  // 1. Status is 'sold' OR 'purchased'
+  // 2. Ownership is false
+  // 3. Created more than 7 days ago
   const overdueChannels = useMemo(() => {
     return (allChannels || []).filter(channel => {
       const hasOwnership = channel.ownerShip || channel.ownershipStatus || false;
       const isOld = isOlderThan7Days(channel.createdAt);
-      // Show ALL channels with ownership false, regardless of status
-      return !hasOwnership && isOld;
+      const isValidStatus = channel.status === 'sold' || channel.status === 'purchased';
+      
+      // Only show if status is sold/purchased, ownership false, and older than 7 days
+      return isValidStatus && !hasOwnership && isOld;
     });
   }, [allChannels]);
 

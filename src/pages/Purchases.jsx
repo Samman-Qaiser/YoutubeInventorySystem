@@ -5,7 +5,7 @@ import {
   useTerminateWithoutLoss,
   useTransferOwnership,
 } from "../hooks/useChannels.js"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import toast from "react-hot-toast"
 import {
@@ -16,10 +16,10 @@ import {
   AlertTriangle, TrendingDown, Loader2,
   UserCheck, Clock,
 } from "lucide-react"
-
+import ViewChannelDrawer from "../components/ViewChannelDrawer";
 import SaleModal from "../components/SaleModal"
 import TableSkeleton from "../Sekeleton/TableSkeleton.jsx"
-
+import { usePurchaseTransactions } from "../hooks/useTransactions.js";
 // ─── constants ────────────────────────────────────────────────────────────────
 const MONTHS  = ["January","February","March","April","May","June","July","August","September","October","November","December"]
 const PER_PAGE = 10
@@ -328,11 +328,34 @@ function ActionsMenu({ channel, onSell, onTerminate, onOwnership, isOwnershipCha
 // ─── main page ────────────────────────────────────────────────────────────────
 export default function Purchases() {
   const { data: allChannels, isLoading, isError } = useAllChannels()
-  const channels = useMemo(
-    () => (allChannels ?? []).filter(ch => ch.status === 'purchased'),
-    [allChannels]
-  )
-  
+
+  // Added after useAllChannels hook
+const { data: purchaseTransactions = [], isLoading: loadingTx } = usePurchaseTransactions()
+// Added this useMemo to create a map of channelId -> sellerName
+const sellerNameMap = useMemo(() => {
+  const map = new Map()
+  purchaseTransactions.forEach(tx => {
+    if (tx.channelId && tx.customerName) {
+      map.set(tx.channelId, tx.customerName)
+    }
+  })
+  return map
+}, [purchaseTransactions])
+// Replaced the old channels filtering with this enhanced version
+const channelsWithSeller = useMemo(() => {
+  if (!allChannels) return []
+  return allChannels
+    .filter(ch => ch.status === 'purchased')
+    .map(ch => ({
+      ...ch,
+      // ✅ NEW: Get sellerName from purchase transaction
+      sellerName: sellerNameMap.get(ch.id) || ch.sellerName || 'N/A'
+    }))
+}, [allChannels, sellerNameMap])
+
+// Use channelsWithSeller instead of the old filtered version
+const channels = channelsWithSeller
+    const [viewChannel, setViewChannel] = useState(null);
   // Mutations with loading states
   const { mutate: markSold, isPending: isSelling } = useMarkChannelSold()
   const { mutate: terminateWithLoss, isPending: isTerminatingLoss } = useTerminateWithLoss()
@@ -390,9 +413,9 @@ export default function Purchases() {
   const clearFilters = () => { setSearchName(""); setMonoFilter("All"); setOwnFilter("All"); setDateFilter("all"); setPage(1) }
 
   // ── handlers with loading states ────────────────────────────────────────────────
-  const handleSaleConfirm = ({ buyerName, salePrice, contactNumber }) => {
+  const handleSaleConfirm = ({ customerName, salePrice, contactNumber }) => {
     markSold(
-      { id: saleChannel.id, salePrice, customerName: buyerName, contactNumber },
+      { id: saleChannel.id, salePrice, customerName: customerName, contactNumber },
       {
         onSuccess: () => { toast.success("Channel marked as sold!"); setSaleChannel(null) },
         onError:   (e) => toast.error(e.message || "Failed to mark as sold"),
@@ -422,7 +445,7 @@ export default function Purchases() {
     })
   }
 
-  if (isLoading) return <TableSkeleton />
+ if (isLoading || loadingTx) return <TableSkeleton />
 
   if (isError) return (
     <div className="flex items-center justify-center py-32">
@@ -624,7 +647,15 @@ export default function Purchases() {
                         </td>
 
                         {/* Actions */}
-                        <td className="px-4 py-3 whitespace-nowrap">
+                         <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="flex items-center gap-1">
+                             <button
+                              onClick={() => setViewChannel(ch)}
+                              className="p-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-500 transition"
+                              title="View Details"
+                            >
+                              <Eye size={13}/>
+                            </button>
                           <ActionsMenu
                             channel={ch}
                             onSell={setSaleChannel}
@@ -633,6 +664,7 @@ export default function Purchases() {
                             isOwnershipChanged={isOwnershipChanged}
                             isOverdue={isOverdueFlag}
                           />
+                          </div>
                         </td>
                       </motion.tr>
                     )
@@ -672,7 +704,11 @@ export default function Purchases() {
           )}
         </motion.div>
       )}
-
+  <ViewChannelDrawer
+        channel={viewChannel}
+        open={!!viewChannel}
+        onClose={() => setViewChannel(null)}
+      />
       {/* Modals with loading states */}
       <SaleModal
         channel={saleChannel}

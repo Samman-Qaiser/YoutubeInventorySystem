@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"; // ✅ Added useMemo
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Link, Eye, EyeOff, User } from "lucide-react";
+import { X, Link, Eye, EyeOff, User, Loader2 } from "lucide-react";
 import { useUpdateChannel } from "../hooks/useChannels";
+import { usePurchaseTransactions } from "../hooks/useTransactions.js"; // ✅ Add this import
 import toast from "react-hot-toast";
-import { Loader2 } from "lucide-react";
+
 const CATEGORIES = ["Gaming","Tech","Food","Sports","Lifestyle","Religion","Education","Entertainment","Finance","Other"];
 const STATUSES   = ["available","sold","hacked","pending"];
 const VIOLATIONS = ["None","Strike","Community Guidelines","Copyright"];
@@ -21,7 +22,8 @@ const secVar = {
   visible: (i) => ({ opacity: 1, y: 0, transition: { delay: i * 0.07, duration: 0.35, ease: "easeOut" } }),
 };
 
-function channelToForm(ch) {
+// ✅ Updated channelToForm to handle seller name from transactions
+function channelToForm(ch, sellerNameFromTx = null) {
   if (!ch) return {
     channelName:"",channelUrl:"",brandName:"",category:"",niche:"",
     contentType:"",subscribers:"",totalVideos:"",views:"",realtimeViews:"",
@@ -29,7 +31,12 @@ function channelToForm(ch) {
     verificationStatus:"",violation:"None",ownershipTransfer:false,
     channelEmail:"",channelPassword:"",primaryEmail:"",
     purchasePrice:"",salePrice:"",status:"",
+    sellerName: "", // Will be set from transaction
   };
+  
+  // ✅ Use seller name from transaction if available, otherwise fallback
+  const sellerName = sellerNameFromTx || ch.sellerName || "";
+  
   return {
     channelName: ch.channelName || "",
     channelUrl: ch.channelUrl || "",
@@ -49,12 +56,12 @@ function channelToForm(ch) {
       ? (ch.verificationStatus ? "Verified" : "Not Verified")
       : (ch.verificationStatus || ""),
     violation: ch.violation || "None",
-    ownershipTransfer: ch.ownershipTransfer || false,
+    ownershipTransfer: ch.ownerShip || ch.ownershipTransfer || false,
     channelEmail: ch.channelEmail || "",
     channelPassword: ch.channelPassword || "",
     primaryEmail: ch.primaryEmail || "",
     purchasePrice: ch.purchasePrice != null ? String(ch.purchasePrice) : "",
-    sellerName: ch.sellerName || "",
+    sellerName: sellerName, // ✅ Set from transaction
     salePrice: ch.salePrice != null ? String(ch.salePrice) : "",
     status: ch.status || "",
   };
@@ -82,41 +89,67 @@ function Field({ label, required, error, children }) {
 }
 
 const REQUIRED = [
-"channelUrl","channelName",
- "purchasePrice","sellerName","salePrice",
-]
+  "channelUrl","channelName",
+  "purchasePrice","sellerName","salePrice",
+];
 
 export default function EditChannelDrawer({ channel, open, onClose, onSave }) {
   const { mutate: updateChannel, isPending, isSuccess, isError, error } = useUpdateChannel();
-  const [form, setForm]         = useState(() => channelToForm(channel));
+  
+  // ✅ Fetch purchase transactions
+  const { data: purchaseTransactions = [], isLoading: loadingTx } = usePurchaseTransactions();
+  
+  // ✅ Create seller name map from purchase transactions
+  const sellerNameMap = useMemo(() => {
+    const map = new Map();
+    purchaseTransactions.forEach(tx => {
+      if (tx.channelId && tx.customerName) {
+        map.set(tx.channelId, tx.customerName);
+      }
+    });
+    return map;
+  }, [purchaseTransactions]);
+  
+  // ✅ Get seller name from transaction
+  const sellerNameFromTx = useMemo(() => {
+    if (!channel) return null;
+    return sellerNameMap.get(channel.id);
+  }, [channel, sellerNameMap]);
+  
+  const [form, setForm]         = useState(() => channelToForm(channel, sellerNameFromTx));
   const [errors, setErrors]     = useState({});
   const [showPass, setShowPass] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
+  const [originalSellerName, setOriginalSellerName] = useState(""); // Track original seller name
 
   const fieldRefs = useRef(Array.from({ length: TOTAL_FIELDS }, () => null));
   const setRef = (i) => (el) => { fieldRefs.current[i] = el; };
 
   // Reset form when channel changes
   useEffect(() => {
-    if (channel) {
-      setForm(channelToForm(channel));
+    if (channel && sellerNameFromTx !== undefined) {
+      const newForm = channelToForm(channel, sellerNameFromTx);
+      setForm(newForm);
+      setOriginalSellerName(sellerNameFromTx || ""); // ✅ Store original seller name
       setErrors({});
       setShowPass(false);
       setLastSaved(null);
     }
-  }, [channel]);
-useEffect(() => {
-  if (isSuccess) {
-    toast.success("Channel updated successfully!");
-    handleCancel();
-  }
-}, [isSuccess]);
+  }, [channel, sellerNameFromTx]);
+  
+  useEffect(() => {
+    if (isSuccess) {
+      toast.success("Channel updated successfully!");
+      handleCancel();
+    }
+  }, [isSuccess]);
 
-useEffect(() => {
-  if (isError) {
-    toast.error(error?.message || "Failed to update channel");
-  }
-}, [isError]);
+  useEffect(() => {
+    if (isError) {
+      toast.error(error?.message || "Failed to update channel");
+    }
+  }, [isError]);
+  
   const set = (key, val) => {
     setForm(f => ({ ...f, [key]: val }));
     if (errors[key]) setErrors(e => ({ ...e, [key]: "" }));
@@ -141,7 +174,6 @@ useEffect(() => {
     if (isLast) { document.getElementById("edit-submit-btn")?.click(); return; }
     if (index === 16) { set("ownershipTransfer", !form.ownershipTransfer); focusNext(index); return; }
     focusNext(index);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusNext, form.ownershipTransfer]);
 
   useEffect(() => {
@@ -163,34 +195,37 @@ useEffect(() => {
   };
 
   const handleSave = () => {
-  if (!validate()) return;
+    if (!validate()) return;
 
-  const payload = {
-    channelName:        form.channelName,
-    channelUrl:         form.channelUrl,
-    brandName:          form.brandName,
-    channelNiche:       form.niche,
-    contentType:        form.contentType,
-    channelSubscribers: form.subscribers,
-    totalVideos:        form.totalVideos,
-    views:              form.views,
-    realtimeViews:      form.realtimeViews,
-    watchTime:          Number(form.watchTime) || 0,
-    channelAge:         form.channelAge,
-    monetizationStatus: form.monetizationStatus,
-    earningData:        Number(form.earningData) || 0,
-    verificationStatus: form.verificationStatus,
-    violation:          form.violation,
-    ownerShip:          form.ownershipTransfer,
-    channelEmail:       form.channelEmail,
-    channelPassword:    form.channelPassword,
-    purchasePrice:      Number(form.purchasePrice) || 0,
-    salePrice:          Number(form.salePrice) || 0,
-    status:             form.status,
+    const payload = {
+      channelName:        form.channelName,
+      channelUrl:         form.channelUrl,
+      brandName:          form.brandName,
+      channelNiche:       form.niche,
+      contentType:        form.contentType,
+      channelSubscribers: form.subscribers,
+      totalVideos:        form.totalVideos,
+      views:              form.views,
+      realtimeViews:      form.realtimeViews,
+      watchTime:          Number(form.watchTime) || 0,
+      channelAge:         form.channelAge,
+      monetizationStatus: form.monetizationStatus,
+      earningData:        Number(form.earningData) || 0,
+      verificationStatus: form.verificationStatus,
+      violation:          form.violation,
+      ownerShip:          form.ownershipTransfer,
+      channelEmail:       form.channelEmail,
+      channelPassword:    form.channelPassword,
+      purchasePrice:      Number(form.purchasePrice) || 0,
+      salePrice:          Number(form.salePrice) || 0,
+      status:             form.status,
+      // ✅ If seller name changed, we need to update the purchase transaction
+      sellerName: form.sellerName,
+      originalSellerName: originalSellerName, // To detect changes
+    };
+
+    updateChannel({ id: channel.id, data: payload });
   };
-
-  updateChannel({ id: channel.id, data: payload });
-};
 
   const handleCancel = useCallback(() => {
     onClose();
@@ -198,6 +233,23 @@ useEffect(() => {
   }, [onClose]);
 
   const kd = (i, isLast = false) => (e) => handleKeyDown(e, i, isLast);
+
+  // Show loading state
+  if (loadingTx && open) {
+    return (
+      <AnimatePresence>
+        {open && (
+          <>
+            <motion.div key="ecd-ov" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:0.22}} onClick={handleCancel} className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[90]"/>
+            <motion.div key="ecd-dr" initial={{x:"100%"}} animate={{x:0}} exit={{x:"100%"}} transition={{type:"spring",stiffness:300,damping:30}} className="fixed top-0 right-0 h-screen w-full sm:w-[420px] bg-white dark:bg-gray-900 shadow-2xl z-[100] flex flex-col items-center justify-center">
+              <Loader2 size={32} className="animate-spin text-blue-500" />
+              <p className="text-sm text-gray-500 mt-3">Loading channel data...</p>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    );
+  }
 
   return (
     <AnimatePresence>
@@ -312,7 +364,7 @@ useEffect(() => {
                   </div>
                 </Field>
                 <Field label="Primary Mail" error={errors.primaryEmail}>
-                  <input ref={setRef(19)} type="email" value={form.primaryEmail} onChange={e=>set("primaryMail",e.target.value)} onKeyDown={kd(19)} placeholder="owner@gmail.com" className={inputCls}/>
+                  <input ref={setRef(19)} type="email" value={form.primaryEmail} onChange={e=>set("primaryEmail",e.target.value)} onKeyDown={kd(19)} placeholder="owner@gmail.com" className={inputCls}/>
                 </Field>
               </div>
             </motion.div>
@@ -323,21 +375,23 @@ useEffect(() => {
                 <Field label="Purchase Price (Rs)" required error={errors.purchasePrice}>
                   <input ref={setRef(20)} type="text" value={form.purchasePrice} onChange={e=>set("purchasePrice",e.target.value)} onKeyDown={kd(20)} placeholder="e.g. 280000" className={inputCls}/>
                 </Field>
+                {/* ✅ Seller Name Field - Now shows from transaction */}
                 <Field label="Seller Name" required error={errors.sellerName}>
                   <div className="relative">
                     <User size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 pointer-events-none" />
-                    <input ref={setRef(21)} value={form.sellerName} onChange={e=>set("sellerName",e.target.value)} onKeyDown={kd(21)} placeholder="Enter seller name" className={inputCls+" pl-8"}/>
+                    <input 
+                      ref={setRef(21)} 
+                      value={form.sellerName} 
+                      onChange={e=>set("sellerName",e.target.value)} 
+                      onKeyDown={kd(21)} 
+                      placeholder="Enter seller name" 
+                      className={inputCls+" pl-8"}
+                    />
                   </div>
                 </Field>
                 <Field label="Sale Price (Rs)" required error={errors.salePrice}>
                   <input ref={setRef(22)} type="text" value={form.salePrice} onChange={e=>set("salePrice",e.target.value)} onKeyDown={kd(22)} placeholder="e.g. 380000" className={inputCls}/>
                 </Field>
-                {/* <Field label="Status" required error={errors.status}>
-                  <select ref={setRef(23)} value={form.status} onChange={e=>set("status",e.target.value)} onKeyDown={kd(23,true)} className={selectCls}>
-                    <option value="">Select status</option>
-                    {STATUSES.map(s=><option key={s}>{s}</option>)}
-                  </select>
-                </Field> */}
               </div>
             </motion.div>
 
@@ -349,21 +403,21 @@ useEffect(() => {
             {lastSaved && <p className="text-[10px] text-center text-blue-400 mb-2">✓ Last saved just now</p>}
             <div className="flex gap-3">
               <button onClick={handleCancel} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">Cancel</button>
-         <button
-  id="edit-submit-btn"
-  onClick={handleSave}
-  disabled={isPending}
-  className="flex-1 px-4 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold shadow-sm transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
->
-  {isPending ? (
-    <>
-      <Loader2 size={14} className="animate-spin" />
-      Saving...
-    </>
-  ) : (
-    "Save Changes"
-  )}
-</button>
+              <button
+                id="edit-submit-btn"
+                onClick={handleSave}
+                disabled={isPending}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold shadow-sm transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </button>
             </div>
           </div>
         </motion.div>

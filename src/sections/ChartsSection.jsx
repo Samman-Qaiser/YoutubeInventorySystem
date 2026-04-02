@@ -243,9 +243,9 @@ export default function ChartsSection({ darkMode }) {
         />
 
         <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-800 pt-3">
-          <span>📈 Highest: <span className="text-emerald-500 font-medium">Rs {maxSale.toLocaleString()}</span></span>
-          <span>📉 Lowest: <span className="text-red-400 font-medium">Rs {minSale.toLocaleString()}</span></span>
-          <span>➗ Avg: <span className="text-blue-400 font-medium">Rs {avgSale.toLocaleString()}</span></span>
+          <span>📈 Highest: <span className="text-emerald-500 font-medium">${maxSale.toLocaleString()}</span></span>
+          <span>📉 Lowest: <span className="text-red-400 font-medium">${minSale.toLocaleString()}</span></span>
+          <span>➗ Avg: <span className="text-blue-400 font-medium">${avgSale.toLocaleString()}</span></span>
         </div>
       </motion.div>
 
@@ -274,9 +274,9 @@ export default function ChartsSection({ darkMode }) {
         />
 
         <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-800 pt-3">
-          <span>🏆 Best: <span className="text-emerald-500 font-medium">{bestMonth} (Rs {bestProfit.toLocaleString()})</span></span>
-          <span>⚠️ Worst: <span className="text-red-400 font-medium">{worstMonth} (Rs {worstProfit.toLocaleString()})</span></span>
-          <span>💰 Total: <span className="text-violet-500 font-medium">Rs {totalProfit.toLocaleString()}</span></span>
+          <span>🏆 Best: <span className="text-emerald-500 font-medium">{bestMonth} (${bestProfit.toLocaleString()})</span></span>
+          <span>⚠️ Worst: <span className="text-red-400 font-medium">{worstMonth} (${worstProfit.toLocaleString()})</span></span>
+          <span>💰 Total: <span className="text-violet-500 font-medium">${totalProfit.toLocaleString()}</span></span>
         </div>
       </motion.div>
 

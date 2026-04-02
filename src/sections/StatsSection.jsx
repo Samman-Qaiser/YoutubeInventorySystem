@@ -5,6 +5,7 @@ import {
   CheckCircle, AlertTriangle, Eye, EyeOff, Filter
 } from "lucide-react";
 import { useAllChannels } from "../hooks/useChannels";
+import { useSaleTransactions } from "../hooks/useTransactions";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -93,12 +94,24 @@ function StatCard({ card, index, maxValue, profitHidden, onToggleHide }) {
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 const toDate = (ts) => ts?.toDate ? ts.toDate() : ts ? new Date(ts) : null;
 
-const getActivityDate = (ch) =>
-  toDate(ch.soldAt ?? ch.terminatedAt ?? ch.hackedAt ?? ch.updatedAt ?? ch.createdAt);
-
 const getCreatedDate = (ch) => toDate(ch.createdAt);
 
-// Check karo agar date us year/month mein hai
+// Activity date — transaction se milegi sold channels ke liye
+// txMap: channelId → transaction document
+const getActivityDate = (ch, txMap) => {
+  // 1. Transaction createdAt — most accurate for sold
+  const tx = txMap?.get(ch.id);
+  if (tx?.createdAt) return toDate(tx.createdAt);
+
+  // 2. Fallbacks on channel document
+  if (ch.soldAt)       return toDate(ch.soldAt);
+  if (ch.terminatedAt) return toDate(ch.terminatedAt);
+  if (ch.hackedAt)     return toDate(ch.hackedAt);
+  if (ch.updatedAt)    return toDate(ch.updatedAt);
+  return toDate(ch.createdAt);
+};
+
+// Period check
 const dateInPeriod = (d, year, month) => {
   if (!d) return false;
   if (month !== null) return d.getFullYear() === year && d.getMonth() === month;
@@ -106,11 +119,7 @@ const dateInPeriod = (d, year, month) => {
 };
 
 // ─── Stats calculator ─────────────────────────────────────────────────────────
-// PURPOSE-BASED filter:
-// purchases  → createdAt se check (kab kharida)
-// sales/profit → activityDate se check (kab becha/hacked/terminated)
-// Dono alag alag check hote hain — ek dusre ko affect nahi karte
-const calcStats = (channels, selectedYear, selectedMonth) => {
+const calcStats = (channels, txMap, selectedYear, selectedMonth) => {
   let sales = 0, purchases = 0, profit = 0;
   let total = 0, sold = 0, hacked = 0;
   let terminatedWithLoss = 0, terminatedWithoutLoss = 0, purchased = 0;
@@ -121,28 +130,19 @@ const calcStats = (channels, selectedYear, selectedMonth) => {
 
   (channels || []).forEach((ch) => {
     const createdD  = getCreatedDate(ch);
-    const activityD = getActivityDate(ch);
+    const activityD = getActivityDate(ch, txMap);   // ← txMap pass
 
-    // Purchase period check — createdAt se
-    const purchaseInPeriod = isAllTime || dateInPeriod(createdD, year, month);
-
-    // Activity period check — soldAt/terminatedAt/hackedAt/updatedAt se
+    const purchaseInPeriod = isAllTime || dateInPeriod(createdD,  year, month);
     const activityInPeriod = isAllTime || dateInPeriod(activityD, year, month);
 
-    // Channel show karo agar koi bhi event us period mein hua ho
     if (!purchaseInPeriod && !activityInPeriod) return;
 
     total++;
-
     const p = Number(ch.purchasePrice) || 0;
     const s = Number(ch.salePrice)     || 0;
 
-    // Purchases: sirf tab count karo jab us period mein KHAREEDA gaya ho
-    if (purchaseInPeriod) {
-      purchases += p;
-    }
+    if (purchaseInPeriod) purchases += p;
 
-    // Sales + Profit: sirf tab count karo jab us period mein ACTIVITY hui ho
     if (activityInPeriod) {
       switch (ch.status) {
         case "sold":
@@ -150,7 +150,7 @@ const calcStats = (channels, selectedYear, selectedMonth) => {
           sales  += s;
           profit += s - p;
           break;
-        case "terminatewithloss":
+        case "terminatedWithLoss":
           terminatedWithLoss++;
           profit += -p;
           break;
@@ -158,7 +158,7 @@ const calcStats = (channels, selectedYear, selectedMonth) => {
           hacked++;
           profit += -p;
           break;
-        case "terminatewithoutloss":
+        case "terminatedWithoutLoss":
           terminatedWithoutLoss++;
           break;
         default:
@@ -166,16 +166,11 @@ const calcStats = (channels, selectedYear, selectedMonth) => {
       }
     }
 
-    // Purchased (abhi bhi stock mein): sirf purchase period se count
-    if (ch.status === "purchased" && purchaseInPeriod) {
-      purchased++;
-    }
+    if (ch.status === "purchased" && purchaseInPeriod) purchased++;
   });
 
-  return {
-    sales, purchases, profit, total, sold, hacked,
-    terminatedWithLoss, terminatedWithoutLoss, purchased,
-  };
+  return { sales, purchases, profit, total, sold, hacked,
+           terminatedWithLoss, terminatedWithoutLoss, purchased };
 };
 
 // ─── Select styles ────────────────────────────────────────────────────────────
@@ -184,29 +179,41 @@ const selectCls = "px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 dark:b
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function StatsSection() {
   const [profitHidden,  setProfitHidden]  = useState(false);
-  const [selectedYear,  setSelectedYear]  = useState("all"); // "all" = All Time
-  const [selectedMonth, setSelectedMonth] = useState("all"); // "all" = whole year
+  const [selectedYear,  setSelectedYear]  = useState("all");
+  const [selectedMonth, setSelectedMonth] = useState("all");
 
-  const { data: channels = [], isLoading } = useAllChannels();
+  const { data: channels     = [], isLoading: chLoading } = useAllChannels();
+  const { data: transactions = [], isLoading: txLoading } = useSaleTransactions();
 
-  // ── Years: 2020 se current year tak, plus jo data mein hain ──────────────
+  // ── Transaction map: channelId → tx (O(1) lookup) ─────────────────────────
+  const txMap = useMemo(() => {
+    const map = new Map();
+    transactions.forEach((tx) => {
+      if (tx.channelId && tx.purchaseOrSale === "sold") {
+        map.set(tx.channelId, tx);
+      }
+    });
+    return map;
+  }, [transactions]);
+
+  // ── Years ─────────────────────────────────────────────────────────────────
   const availableYears = useMemo(() => {
     const set = new Set();
     channels.forEach((ch) => {
       const d = getCreatedDate(ch);
       if (d) set.add(d.getFullYear());
-      const a = getActivityDate(ch);
+      const a = getActivityDate(ch, txMap);
       if (a) set.add(a.getFullYear());
     });
     const currentYear = new Date().getFullYear();
     for (let yr = 2020; yr <= currentYear; yr++) set.add(yr);
     return Array.from(set).sort((a, b) => b - a);
-  }, [channels]);
+  }, [channels, txMap]);
 
   // ── Stats ─────────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
-    return calcStats(channels, selectedYear, selectedMonth);
-  }, [channels, selectedYear, selectedMonth]);
+    return calcStats(channels, txMap, selectedYear, selectedMonth);
+  }, [channels, txMap, selectedYear, selectedMonth]);
 
   // ── Period label ──────────────────────────────────────────────────────────
   const periodLabel = selectedYear === "all"
@@ -214,6 +221,8 @@ export default function StatsSection() {
     : selectedMonth !== "all"
       ? `${MONTHS[Number(selectedMonth)]} ${selectedYear}`
       : String(selectedYear);
+
+  const isLoading = chLoading || txLoading;
 
   // ── Cards ─────────────────────────────────────────────────────────────────
   const cards = [
@@ -280,13 +289,9 @@ export default function StatsSection() {
           <Filter size={13} className="text-gray-400 dark:text-gray-500" />
           <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">Filter by:</span>
 
-          {/* Year */}
           <select
             value={selectedYear}
-            onChange={(e) => {
-              setSelectedYear(e.target.value);
-              setSelectedMonth("all");
-            }}
+            onChange={(e) => { setSelectedYear(e.target.value); setSelectedMonth("all"); }}
             className={selectCls}
           >
             <option value="all">All Years</option>
@@ -295,7 +300,6 @@ export default function StatsSection() {
             ))}
           </select>
 
-          {/* Month — disabled when All Years */}
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
@@ -308,7 +312,6 @@ export default function StatsSection() {
             ))}
           </select>
 
-          {/* Active period badge */}
           <span className="ml-auto text-xs font-semibold text-violet-500 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20 px-2.5 py-1 rounded-lg">
             {periodLabel}
           </span>

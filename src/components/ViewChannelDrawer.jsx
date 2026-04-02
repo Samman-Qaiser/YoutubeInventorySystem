@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef ,useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, Eye, EyeOff, Share2, Copy, ExternalLink,
   MessageCircle, CheckCircle, Mail, Lock, Pencil, User
 } from "lucide-react";
-
+import { usePurchaseTransactions } from "../hooks/useTransactions.js";
 // ─── category theming ─────────────────────────────────────────────────────────
 const CAT_BANNER = {
   Gaming:        "from-violet-500 via-purple-600 to-violet-800",
@@ -110,13 +110,37 @@ function StatChip({ label, value, borderCls }) {
   );
 }
 
-// ─── main component ───────────────────────────────────────────────────────────
+
+
 export default function ViewChannelDrawer({ channel:ch, open, onClose, onEdit }) {
   const [showPass, setShowPass]   = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const shareRef = useRef(null);
   const { copied, copy } = useCopy();
+
+  // ✅ Fetch purchase transactions
+  const { data: purchaseTransactions = [], isLoading: loadingTx } = usePurchaseTransactions();
+
+  // ✅ Create seller name map from purchase transactions
+  const sellerNameMap = useMemo(() => {
+    const map = new Map();
+    purchaseTransactions.forEach(tx => {
+      if (tx.channelId && tx.customerName) {
+        map.set(tx.channelId, tx.customerName);
+      }
+    });
+    return map;
+  }, [purchaseTransactions]);
+console.log('channel',ch)
+  // ✅ Enhance channel with seller name from purchase transaction
+  const enhancedChannel = useMemo(() => {
+    if (!ch) return null;
+    return {
+      ...ch,
+      sellerName: sellerNameMap.get(ch.id) || ch.sellerName || 'N/A'
+    };
+  }, [ch, sellerNameMap]);
 
   // share popup outside click
   useEffect(()=>{
@@ -138,15 +162,31 @@ export default function ViewChannelDrawer({ channel:ch, open, onClose, onEdit })
     return()=>{ document.body.style.overflow=""; };
   },[open]);
 
-  if(!ch) return null;
+  // ✅ Show loading state while fetching transactions
+  if (!enhancedChannel && open) {
+    return (
+      <AnimatePresence>
+        {open && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[90] flex items-center justify-center">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 flex items-center gap-3">
+              <Loader2 size={24} className="animate-spin text-emerald-500" />
+              <span className="text-gray-600 dark:text-gray-300">Loading channel details...</span>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
+    );
+  }
 
-  const banner     = CAT_BANNER[ch.category] || CAT_BANNER.Other;
-  const avatarText = CAT_TEXT[ch.category]   || CAT_TEXT.Other;
-  const profit     = (Number(ch.salePrice)||0) - (Number(ch.purchasePrice)||0);
-  const statusText = capFirst(ch.status);
-  const verifText  = getVerif(ch.verificationStatus);
+  if(!enhancedChannel) return null;
 
-  const copyLink  = async () => { await navigator.clipboard.writeText(ch.channelUrl||""); setLinkCopied(true); setTimeout(()=>setLinkCopied(false),2000); };
+  const banner     = CAT_BANNER[enhancedChannel.category] || CAT_BANNER.Other;
+  const avatarText = CAT_TEXT[enhancedChannel.category]   || CAT_TEXT.Other;
+  const profit     = (Number(enhancedChannel.salePrice)||0) - (Number(enhancedChannel.purchasePrice)||0);
+  const statusText = capFirst(enhancedChannel.status);
+  const verifText  = getVerif(enhancedChannel.verificationStatus);
+
+  const copyLink  = async () => { await navigator.clipboard.writeText(enhancedChannel.channelUrl||""); setLinkCopied(true); setTimeout(()=>setLinkCopied(false),2000); };
 
   return (
     <AnimatePresence>
@@ -170,141 +210,141 @@ export default function ViewChannelDrawer({ channel:ch, open, onClose, onEdit })
         >
 
           {/* ── HERO BANNER ────────────────────────────────────── */}
-<div className="relative h-28 shrink-0 overflow-visible">
+          <div className="relative h-28 shrink-0 overflow-visible">
 
-  {/* Banner */}
-  {ch.bannerUrl ? (
-    <img
-      src={ch.bannerUrl}
-      alt="banner"
-      className="absolute inset-0 w-full h-full object-cover"
-    />
-  ) : (
-    <div className={`absolute inset-0 bg-gradient-to-br ${banner}`} />
-  )}
+            {/* Banner */}
+            {enhancedChannel.bannerUrl ? (
+              <img
+                src={enhancedChannel.bannerUrl}
+                alt="banner"
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            ) : (
+              <div className={`absolute inset-0 bg-gradient-to-br ${banner}`} />
+            )}
 
-  {/* Overlay (optional) */}
-  <div className="absolute inset-0 bg-black/10" />
+            {/* Overlay (optional) */}
+            <div className="absolute inset-0 bg-black/10" />
 
-  {/* Avatar */}
-  <div className="absolute -bottom-8 left-5 w-16 h-16 rounded-2xl bg-white shadow-lg flex items-center justify-center z-20 overflow-hidden border-2 border-white dark:border-[#111322]">
-    
-    {ch.channelProfile ? (
-      <img
-        src={ch.channelProfile}
-        alt="profile"
-        className="w-full h-full object-cover"
-      />
-    ) : (
-      <span className={`text-xl font-bold ${avatarText}`}>
-        {getInitials(ch.channelName)}
-      </span>
-    )}
+            {/* Avatar */}
+            <div className="absolute -bottom-8 left-5 w-16 h-16 rounded-2xl bg-white shadow-lg flex items-center justify-center z-20 overflow-hidden border-2 border-white dark:border-[#111322]">
+              
+              {enhancedChannel.channelProfile ? (
+                <img
+                  src={enhancedChannel.channelProfile}
+                  alt="profile"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className={`text-xl font-bold ${avatarText}`}>
+                  {getInitials(enhancedChannel.channelName)}
+                </span>
+              )}
 
-  </div>
+            </div>
 
-  {/* Top-right controls */}
-  <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
+            {/* Top-right controls */}
+            <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
 
-    {/* Share */}
-    <div className="relative" ref={shareRef}>
-      <button
-        onClick={() => setShareOpen(!shareOpen)}
-        className="w-8 h-8 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white flex items-center justify-center transition"
-      >
-        <Share2 size={15} />
-      </button>
+              {/* Share */}
+              <div className="relative" ref={shareRef}>
+                <button
+                  onClick={() => setShareOpen(!shareOpen)}
+                  className="w-8 h-8 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white flex items-center justify-center transition"
+                >
+                  <Share2 size={15} />
+                </button>
 
-      <AnimatePresence>
-        {shareOpen && (
-          <motion.div
-            key="share-pop"
-            initial={{ opacity: 0, scale: 0.9, y: -4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: -4 }}
-            transition={{ duration: 0.15 }}
-            className="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl z-30 overflow-hidden p-1"
-          >
-            {[
-              {
-                icon: Copy,
-                label: "Copy Link",
-                action: () => {
-                  navigator.clipboard.writeText(ch.channelUrl || "");
-                  setShareOpen(false);
-                },
-                color: "text-gray-600 dark:text-gray-300",
-              },
-              {
-                icon: ExternalLink,
-                label: "Open in Browser",
-                action: () => {
-                  window.open(`https://${ch.channelUrl}`, "_blank");
-                  setShareOpen(false);
-                },
-                color: "text-gray-600 dark:text-gray-300",
-              },
-              {
-                icon: MessageCircle,
-                label: "Share on WhatsApp",
-                action: () => {
-                  window.open(
-                    `https://wa.me/?text=${encodeURIComponent(
-                      (ch.channelName || "") +
-                        " — " +
-                        (ch.channelUrl || "")
-                    )}`,
-                    "_blank"
-                  );
-                  setShareOpen(false);
-                },
-                color: "text-emerald-600 dark:text-emerald-400",
-              },
-            ].map(({ icon: Icon, label, action, color }) => (
+                <AnimatePresence>
+                  {shareOpen && (
+                    <motion.div
+                      key="share-pop"
+                      initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, y: -4 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl z-30 overflow-hidden p-1"
+                    >
+                      {[
+                        {
+                          icon: Copy,
+                          label: "Copy Link",
+                          action: () => {
+                            navigator.clipboard.writeText(enhancedChannel.channelUrl || "");
+                            setShareOpen(false);
+                          },
+                          color: "text-gray-600 dark:text-gray-300",
+                        },
+                        {
+                          icon: ExternalLink,
+                          label: "Open in Browser",
+                          action: () => {
+                            window.open(`https://${enhancedChannel.channelUrl}`, "_blank");
+                            setShareOpen(false);
+                          },
+                          color: "text-gray-600 dark:text-gray-300",
+                        },
+                        {
+                          icon: MessageCircle,
+                          label: "Share on WhatsApp",
+                          action: () => {
+                            window.open(
+                              `https://wa.me/?text=${encodeURIComponent(
+                                (enhancedChannel.channelName || "") +
+                                  " — " +
+                                  (enhancedChannel.channelUrl || "")
+                              )}`,
+                              "_blank"
+                            );
+                            setShareOpen(false);
+                          },
+                          color: "text-emerald-600 dark:text-emerald-400",
+                        },
+                      ].map(({ icon: Icon, label, action, color }) => (
+                        <button
+                          key={label}
+                          onClick={action}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                        >
+                          <Icon size={13} className={color} />
+                          <span className={color}>{label}</span>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Close */}
               <button
-                key={label}
-                onClick={action}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                onClick={onClose}
+                className="w-8 h-8 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white flex items-center justify-center transition"
               >
-                <Icon size={13} className={color} />
-                <span className={color}>{label}</span>
+                <X size={16} />
               </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-
-    {/* Close */}
-    <button
-      onClick={onClose}
-      className="w-8 h-8 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white flex items-center justify-center transition"
-    >
-      <X size={16} />
-    </button>
-  </div>
-</div>
+            </div>
+          </div>
 
           {/* ── CHANNEL IDENTITY ─── (below banner, clear avatar) */}
           <motion.div custom={0} variants={secVar} initial="hidden" animate="visible"
             className="px-5 pt-12 pb-4 border-b border-gray-100 dark:border-gray-800/60 shrink-0"
           >
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{ch.channelName}</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{enhancedChannel.channelName}</h2>
 
-            {ch.channelUrl && (
+            {enhancedChannel.channelUrl && (
               <a
-                href={`https://${ch.channelUrl}`}
+                href={`https://${enhancedChannel.channelUrl}`}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-emerald-500 transition mt-0.5"
               >
-                <ExternalLink size={12}/> {ch.channelUrl}
+                <ExternalLink size={12}/> {enhancedChannel.channelUrl}
               </a>
             )}
 
             <div className="flex flex-wrap items-center gap-2 mt-3">
-              <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">{ch.category}</span>
-              <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full capitalize ${STATUS_CLS[ch.status]||STATUS_CLS.available}`}>{statusText}</span>
+              <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">{enhancedChannel.category}</span>
+              <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full capitalize ${STATUS_CLS[enhancedChannel.status]||STATUS_CLS.available}`}>{statusText}</span>
               {verifText==="Verified" && <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400">✓ Verified</span>}
             </div>
           </motion.div>
@@ -317,10 +357,10 @@ export default function ViewChannelDrawer({ channel:ch, open, onClose, onEdit })
               className="px-5 py-4 border-b border-gray-100 dark:border-gray-800/60"
             >
               <div className="flex gap-3 overflow-x-auto pb-1">
-                <StatChip label="Subscribers"  value={fmtNum(ch.channelSubscribers||ch.subscribers)} borderCls={CHIP_BORDER[0]}/>
-                <StatChip label="Total Videos" value={fmtNum(ch.totalVideos)}  borderCls={CHIP_BORDER[1]}/>
-                <StatChip label="Total Views"  value={fmtNum(ch.views)}         borderCls={CHIP_BORDER[2]}/>
-                <StatChip label="Watch Time"   value={ch.watchTime?`${fmtNum(ch.watchTime)}h`:"—"} borderCls={CHIP_BORDER[3]}/>
+                <StatChip label="Subscribers"  value={fmtNum(enhancedChannel.channelSubscribers||enhancedChannel.subscribers)} borderCls={CHIP_BORDER[0]}/>
+                <StatChip label="Total Videos" value={fmtNum(enhancedChannel.totalVideos)}  borderCls={CHIP_BORDER[1]}/>
+                <StatChip label="Total Views"  value={fmtNum(enhancedChannel.views)}         borderCls={CHIP_BORDER[2]}/>
+                <StatChip label="Watch Time"   value={enhancedChannel.watchTime?`${fmtNum(enhancedChannel.watchTime)}h`:"—"} borderCls={CHIP_BORDER[3]}/>
               </div>
             </motion.div>
 
@@ -329,14 +369,14 @@ export default function ViewChannelDrawer({ channel:ch, open, onClose, onEdit })
               className="px-5 py-4 border-b border-gray-100 dark:border-gray-800/60"
             >
               <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                <InfoCell label="Niche"          value={ch.channelNiche||ch.niche}/>
-                <InfoCell label="Content Type"   value={ch.contentType}/>
-                <InfoCell label="Channel Age"    value={ch.channelAge}/>
-                <InfoCell label="Realtime Views" value={ch.realtimeViews}/>
-                <InfoCell label="Brand Name"     value={ch.brandName}/>
+                <InfoCell label="Niche"          value={enhancedChannel.channelNiche||enhancedChannel.niche}/>
+                <InfoCell label="Content Type"   value={enhancedChannel.contentType}/>
+                <InfoCell label="Channel Age"    value={enhancedChannel.channelAge}/>
+                <InfoCell label="Realtime Views" value={enhancedChannel.realtimeViews}/>
+                <InfoCell label="Brand Name"     value={enhancedChannel.brandName}/>
                 <InfoCell label="Verification"   value={verifText}/>
-                <InfoCell label="Violation"      value={ch.violation||"None"}/>
-                <InfoCell label="Ownership Transfer" value={ch.ownershipTransfer?"Yes":"No"}/>
+                <InfoCell label="Violation"      value={enhancedChannel.violation||"None"}/>
+                <InfoCell label="Ownership Transfer" value={enhancedChannel.ownershipTransfer?"Yes":"No"}/>
               </div>
             </motion.div>
 
@@ -347,14 +387,14 @@ export default function ViewChannelDrawer({ channel:ch, open, onClose, onEdit })
               <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-4 flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">Monetization</p>
-                  <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${MONO_CLS[ch.monetizationStatus]||MONO_CLS["Not Monetized"]}`}>
-                    {ch.monetizationStatus||"Unknown"}
+                  <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${MONO_CLS[enhancedChannel.monetizationStatus]||MONO_CLS["Not Monetized"]}`}>
+                    {enhancedChannel.monetizationStatus||"Unknown"}
                   </span>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Earning / Month</p>
-                  <p className={`text-2xl font-bold ${ch.earningPerMonth?"text-emerald-500":"text-gray-300 dark:text-gray-600"}`}>
-                    ${ch.earningData }
+                  <p className={`text-2xl font-bold ${enhancedChannel.earningPerMonth?"text-emerald-500":"text-gray-300 dark:text-gray-600"}`}>
+                    ${enhancedChannel.earningData}
                   </p>
                 </div>
               </div>
@@ -366,9 +406,9 @@ export default function ViewChannelDrawer({ channel:ch, open, onClose, onEdit })
             >
               <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Account Details</p>
               <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl px-4">
-                <CredRow Icon={Mail}  label="Channel Email" value={ch.channelEmail} fieldKey="email"    copied={copied} onCopy={copy}/>
-                <CredRow Icon={Mail}  label="Primary Mail"  value={ch.primaryEmail}  fieldKey="primary"  copied={copied} onCopy={copy}/>
-                <CredRow Icon={Lock}  label="Password"      value={ch.channelPassword} fieldKey="pass" copied={copied} onCopy={copy}
+                <CredRow Icon={Mail}  label="Channel Email" value={enhancedChannel.channelEmail} fieldKey="email"    copied={copied} onCopy={copy}/>
+                <CredRow Icon={Mail}  label="Primary Mail"  value={enhancedChannel.primaryEmail}  fieldKey="primary"  copied={copied} onCopy={copy}/>
+                <CredRow Icon={Lock}  label="Password"      value={enhancedChannel.channelPassword} fieldKey="pass" copied={copied} onCopy={copy}
                   isPassword showVal={showPass} onToggle={()=>setShowPass(!showPass)}/>
               </div>
             </motion.div>
@@ -381,25 +421,31 @@ export default function ViewChannelDrawer({ channel:ch, open, onClose, onEdit })
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-blue-50 dark:bg-blue-900/15 rounded-2xl p-3 text-center">
                   <p className="text-[10px] text-blue-400 font-semibold uppercase tracking-wide mb-1.5">Buy</p>
-                  <p className="text-base font-bold text-blue-600 dark:text-blue-400">${ch.purchasePrice}</p>
+                  <p className="text-base font-bold text-blue-600 dark:text-blue-400">${enhancedChannel.purchasePrice}</p>
                 </div>
                 <div className="bg-emerald-50 dark:bg-emerald-900/15 rounded-2xl p-3 text-center">
                   <p className="text-[10px] text-emerald-400 font-semibold uppercase tracking-wide mb-1.5">Sale</p>
-                  <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">${ch.salePrice}</p>
+                  <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">${enhancedChannel.salePrice}</p>
                 </div>
                 <div className={`rounded-2xl p-3 text-center ${profit>=0?"bg-violet-50 dark:bg-violet-900/15":"bg-red-50 dark:bg-red-900/15"}`}>
                   <p className={`text-[10px] font-semibold uppercase tracking-wide mb-1.5 ${profit>=0?"text-violet-400":"text-red-400"}`}>Profit</p>
                   <p className={`text-base font-bold ${profit>=0?"text-violet-600 dark:text-violet-400":"text-red-600 dark:text-red-400"}`}>${profit}</p>
                 </div>
               </div>
-              {/* Seller row */}
+              {/* ✅ Seller row - Now showing from purchase transaction */}
               <div className="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800/60">
                 <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
                   <User size={14} className="text-gray-400 dark:text-gray-500"/>
                 </div>
                 <div className="flex-1 flex items-center justify-between">
                   <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Seller</p>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-200">{ch.sellerName || "—"}</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                    {loadingTx ? (
+                      <Loader2 size={14} className="animate-spin text-emerald-500" />
+                    ) : (
+                      enhancedChannel.sellerName || "—"
+                    )}
+                  </p>
                 </div>
               </div>
             </motion.div>
@@ -410,7 +456,7 @@ export default function ViewChannelDrawer({ channel:ch, open, onClose, onEdit })
             >
               <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Channel URL</p>
               <div className="bg-gray-50 dark:bg-gray-900 rounded-xl px-4 py-3 mb-3">
-                <p className="text-sm font-mono text-gray-500 dark:text-gray-400 truncate">{ch.channelUrl||"—"}</p>
+                <p className="text-sm font-mono text-gray-500 dark:text-gray-400 truncate">{enhancedChannel.channelUrl||"—"}</p>
               </div>
               <div className="flex gap-2">
                 <button
@@ -421,7 +467,7 @@ export default function ViewChannelDrawer({ channel:ch, open, onClose, onEdit })
                   {linkCopied ? "Copied!" : "Copy URL"}
                 </button>
                 <button
-                  onClick={()=>ch.channelUrl&&window.open(`https://${ch.channelUrl}`,"_blank")}
+                  onClick={()=>enhancedChannel.channelUrl&&window.open(`https://${enhancedChannel.channelUrl}`,"_blank")}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
                 >
                   <ExternalLink size={13}/> Open
@@ -435,7 +481,7 @@ export default function ViewChannelDrawer({ channel:ch, open, onClose, onEdit })
           {/* ── FOOTER ─────────────────────────────────────────── */}
           <div className="shrink-0 px-5 py-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950">
             <button
-              onClick={()=>{ onClose(); onEdit(ch); }}
+              onClick={()=>{ onClose(); onEdit(enhancedChannel); }}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold shadow-sm transition active:scale-95"
             >
               <Pencil size={15}/> Edit Channel
