@@ -244,16 +244,16 @@ export default function StatsSection() {
       change: stats.profit >= 0 ? "Profit" : "Loss",
       up: stats.profit >= 0,   hideable: true,
     },
-    {
-      label: "Total Channels", value: stats.total,
-      icon: Video,             accent: "#ef4444", prefix: "",
-      change: `${stats.purchased} in stock`,
-      up: true,                hideable: false,
-    },
+{
+  label: "Total Channels", value: stats.total,
+  icon: Video,             accent: "#ef4444", prefix: "",
+  change: `${stats.purchased} stock · ${stats.terminatedWithLoss + stats.terminatedWithoutLoss} terminated`,
+  up: true,                hideable: false,
+},
     {
       label: "Channels Sold",  value: stats.sold,
       icon: CheckCircle,       accent: "#14b8a6", prefix: "",
-      change: `${stats.terminatedWithoutLoss} terminated`,
+  
       up: true,                hideable: false,
     },
     {
