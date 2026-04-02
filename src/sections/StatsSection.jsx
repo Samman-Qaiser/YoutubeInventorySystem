@@ -247,7 +247,7 @@ export default function StatsSection() {
 {
   label: "Total Channels", value: stats.total,
   icon: Video,             accent: "#ef4444", prefix: "",
-  change: `${stats.purchased} stock · ${stats.terminatedWithLoss + stats.terminatedWithoutLoss} terminated`,
+  change: `${stats.purchased} stock `,
   up: true,                hideable: false,
 },
     {
@@ -259,7 +259,7 @@ export default function StatsSection() {
     {
       label: "Hacked / Lost",  value: stats.hacked,
       icon: AlertTriangle,     accent: "#f97316", prefix: "",
-      change: `${stats.terminatedWithLoss} with loss`,
+      change: `${stats.terminatedWithLoss} with loss . ${stats.terminatedWithoutLoss} No Loss`,
       up: false,               hideable: false,
     },
   ];
