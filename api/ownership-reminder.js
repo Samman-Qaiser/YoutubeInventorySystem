@@ -147,6 +147,7 @@ export default async function handler(req, res) {
       .collection("channels")
       .where("ownerShip",  "==", false)
       .where("status",     "==", "purchased")
+      .where("status",     "==", "sold")
       .where("createdAt",  "<=", sevenDaysAgo())
       .get();
 
