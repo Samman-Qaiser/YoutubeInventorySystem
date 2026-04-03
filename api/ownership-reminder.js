@@ -100,7 +100,7 @@ const buildHtml = (channels) => {
   <html>
   <head><meta charset="UTF-8"/></head>
   <body style="margin:0;padding:0;background:#f9fafb;font-family:'Segoe UI',Arial,sans-serif;">
-    <div style="max-width:700px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+    <div style="max-width:1000px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
       <div style="background:linear-gradient(135deg,#8b5cf6 0%,#3b82f6 100%);padding:32px 40px;">
         <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;">⚠️ Ownership Transfer Reminder</h1>
         <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">
