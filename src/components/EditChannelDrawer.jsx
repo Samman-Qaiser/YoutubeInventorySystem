@@ -219,6 +219,7 @@ export default function EditChannelDrawer({ channel, open, onClose, onSave }) {
       purchasePrice:      Number(form.purchasePrice) || 0,
       salePrice:          Number(form.salePrice) || 0,
       status:             form.status,
+      category:         form.category,
       // ✅ If seller name changed, we need to update the purchase transaction
       sellerName: form.sellerName,
       originalSellerName: originalSellerName, // To detect changes
