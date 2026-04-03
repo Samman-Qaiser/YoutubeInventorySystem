@@ -146,8 +146,7 @@ export default async function handler(req, res) {
        const snap = await db
       .collection("channels")
       .where("ownerShip",  "==", false)
-      .where("status",     "==", "purchased")
-      .where("status",     "==", "sold")
+      .where("status", "in", ["purchased", "sold"])
       .where("createdAt",  "<=", sevenDaysAgo())
       .get();
 
