@@ -8,7 +8,7 @@ const currentYear = currentDate.getFullYear();
         v1.0.0
       </div>
       <div className="w-full sm:w-1/3 text-center order-1 sm:order-2">
-        &copy; {currentYear} AbbasStock. All rights reserved.
+        &copy; {currentYear} YoutubeStock. All rights reserved.
       </div>
       <div className="w-full sm:w-1/3 flex justify-center  sm:justify-end order-3">
       <p className="text-[14px]">  Made with 🥴  and 🚬

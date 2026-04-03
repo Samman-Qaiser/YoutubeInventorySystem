@@ -34,7 +34,7 @@ export default function Topbar({ darkMode, setDarkMode, collapsed, setMobileMenu
         </button>
         <div>
           <h1 className="text-base font-semibold text-gray-800 dark:text-white">Dashboard</h1>
-          <p className="text-xs text-gray-400 dark:text-gray-500 hidden sm:block">Welcome back, Abbas 👋</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 hidden sm:block">Welcome back, Admin 👋</p>
         </div>
       </div>
 
@@ -59,7 +59,7 @@ export default function Topbar({ darkMode, setDarkMode, collapsed, setMobileMenu
             <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center">
               <User size={14} className="text-white" />
             </div>
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-200 hidden sm:block">Abbas</span>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-200 hidden sm:block">Admin</span>
           </div>
 
           <AnimatePresence>

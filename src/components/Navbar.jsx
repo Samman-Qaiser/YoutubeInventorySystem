@@ -38,7 +38,7 @@ export default function Navbar({ collapsed, setCollapsed, mobileMenuOpen, setMob
           <div className={`flex items-center gap-2 ${collapsed ? "max-md:flex md:hidden" : "flex"}`}>
             <Store className="text-emerald-500" size={22} />
             <span className="font-bold text-gray-800 dark:text-white text-lg tracking-tight">
-              Abbas<span className="text-emerald-500">Stock</span>
+              Youtube<span className="text-emerald-500">Stock</span>
             </span>
           </div>
        {collapsed && (
