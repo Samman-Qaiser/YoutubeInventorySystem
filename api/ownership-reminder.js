@@ -136,12 +136,18 @@ export default async function handler(req, res) {
   // }
 
   try {
-    const snap = await db
+    // const snap = await db
+    //   .collection("channels")
+    //   .where("ownerShip",  "==", false)
+    //   .where("status",     "==", "purchased")
+    //   .where("createdAt",  "<=", sevenDaysAgo())
+    //   .orderBy("createdAt", "asc")
+    //   .get();
+       const snap = await db
       .collection("channels")
       .where("ownerShip",  "==", false)
       .where("status",     "==", "purchased")
       .where("createdAt",  "<=", sevenDaysAgo())
-      .orderBy("createdAt", "asc")
       .get();
 
     if (snap.empty) {
