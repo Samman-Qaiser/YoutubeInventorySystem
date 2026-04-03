@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import ViewChannelDrawer from "../components/ViewChannelDrawer";
 import Toast from "../components/Toast";
-
+import EditChannelDrawer   from "../components/EditChannelDrawer";
 // ─── Backend Imports ──────────────────────────────────────────────────────────
 import { useAllChannels, useSoldChannels } from "../hooks/useChannels";
 import { useSaleTransactions ,usePurchaseTransactions } from "../hooks/useTransactions.js";
@@ -444,6 +444,7 @@ useEffect(() => {
   
   // Modals
   const [viewChannel, setViewChannel] = useState(null);
+     const [editChannel,   setEditChannel]   = useState(null);
   const [ownershipChannel, setOwnershipChannel] = useState(null);
   const [returnChannelData, setReturnChannelData] = useState(null);
   const [hackChannelData, setHackChannelData] = useState(null);
@@ -938,8 +939,14 @@ useEffect(() => {
         channel={viewChannel}
         open={!!viewChannel}
         onClose={() => setViewChannel(null)}
+         onEdit={(ch) => { setViewChannel(null); setEditChannel(ch); }}
       />
-      
+        <EditChannelDrawer
+                    channel={editChannel}
+                    open={!!editChannel}
+                    onClose={() => setEditChannel(null)}
+                    onSave={() => setEditChannel(null)}
+                  />
       <OwnershipModal
         channel={ownershipChannel}
         open={!!ownershipChannel}

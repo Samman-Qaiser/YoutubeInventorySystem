@@ -17,6 +17,7 @@ import {
   UserCheck, Clock,
 } from "lucide-react"
 import ViewChannelDrawer from "../components/ViewChannelDrawer";
+import EditChannelDrawer   from "../components/EditChannelDrawer";
 import SaleModal from "../components/SaleModal"
 import TableSkeleton from "../Sekeleton/TableSkeleton.jsx"
 import { usePurchaseTransactions } from "../hooks/useTransactions.js";
@@ -356,6 +357,7 @@ const channelsWithSeller = useMemo(() => {
 // Use channelsWithSeller instead of the old filtered version
 const channels = channelsWithSeller
     const [viewChannel, setViewChannel] = useState(null);
+      const [editChannel,   setEditChannel]   = useState(null);
   // Mutations with loading states
   const { mutate: markSold, isPending: isSelling } = useMarkChannelSold()
   const { mutate: terminateWithLoss, isPending: isTerminatingLoss } = useTerminateWithLoss()
@@ -708,7 +710,15 @@ const channels = channelsWithSeller
         channel={viewChannel}
         open={!!viewChannel}
         onClose={() => setViewChannel(null)}
+        onEdit={(ch) => { setViewChannel(null); setEditChannel(ch); }}
       />
+        <EditChannelDrawer
+              channel={editChannel}
+              open={!!editChannel}
+              onClose={() => setEditChannel(null)}
+              onSave={() => setEditChannel(null)}
+            />
+            
       {/* Modals with loading states */}
       <SaleModal
         channel={saleChannel}
