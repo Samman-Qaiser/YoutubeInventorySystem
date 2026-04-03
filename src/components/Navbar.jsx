@@ -106,7 +106,7 @@ export default function Navbar({ collapsed, setCollapsed, mobileMenuOpen, setMob
 
         {/* Bottom */}
         <div className={`px-4 py-4 border-t border-gray-100 dark:border-gray-800 ${collapsed ? "max-md:block md:hidden" : "block"}`}>
-          <p className="text-xs text-gray-400 dark:text-gray-600">v1.0.0 • Abbas Stock</p>
+          <p className="text-xs text-gray-400 dark:text-gray-600">v1.0.0 • Youtube Stock</p>
         </div>
       </aside>
     </>

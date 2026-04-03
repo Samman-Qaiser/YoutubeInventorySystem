@@ -759,7 +759,7 @@ useEffect(() => {
                         transition={{ delay:i*0.03, duration:0.25 }}
                         className={`border-b border-gray-50 dark:border-gray-800/60 hover:bg-emerald-50/30 dark:hover:bg-emerald-900/5 transition group ${rowBgClass}`}
                       >
-                        <td className="px-4 py-3 text-xs  font-medium whitespace-nowrap">
+                        <td className="px-4 py-3 text-xs text-gray-800 dark:text-gray-50 font-medium whitespace-nowrap">
                           {(safePage-1)*PER_PAGE + i + 1}
                           {isOverdue && <span title="Ownership overdue" className="ml-1.5 inline-block w-1.5 h-1.5 rounded-full bg-amber-400 align-middle"/>}
                         </td>

@@ -170,7 +170,7 @@ export default function Login({ onLogin }) {
             </div>
             <div>
               <span className="text-2xl font-black text-white tracking-tight" style={{ fontFamily: "'Syne', sans-serif" }}>
-                Abbas<span className="shimmer-text">Stock</span>
+                Youtube<span className="shimmer-text">Stock</span>
               </span>
               <p className="text-xs text-emerald-500/70 font-medium tracking-widest uppercase mt-0.5">Channel Marketplace</p>
             </div>
@@ -234,7 +234,7 @@ export default function Login({ onLogin }) {
         </motion.div>
 
         <div className="relative z-10 flex items-center justify-between">
-          <p className="text-xs text-white/20">© 2024 AbbasStock. All rights reserved.</p>
+          <p className="text-xs text-white/20">© YoutubeStock. All rights reserved.</p>
           <div className="flex gap-1.5">
             {[...Array(3)].map((_, i) => (
               <div key={i} className="w-1.5 h-1.5 rounded-full bg-white/20" />
@@ -278,7 +278,7 @@ export default function Login({ onLogin }) {
                   <Store className="text-white" size={16} />
                 </div>
                 <span className="text-lg font-black text-white" style={{ fontFamily: "'Syne', sans-serif" }}>
-                  Abbas<span className="shimmer-text">Stock</span>
+                  Youtube<span className="shimmer-text">Stock</span>
                 </span>
               </div>
               <h3 className="text-3xl font-black text-white mb-2" style={{ fontFamily: "'Syne', sans-serif" }}>

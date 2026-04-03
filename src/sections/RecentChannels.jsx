@@ -25,9 +25,9 @@ function getStatusInfo(status) {
       return { text: "Sold", color: "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-800" };
     case "hacked":
       return { text: "Hacked", color: "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-800" };
-    case "terminate_with_loss":
+    case "terminatedWithLoss":
       return { text: "Terminated (Loss)", color: "bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border border-orange-100 dark:border-orange-800" };
-    case "terminate_without_loss":
+    case "terminatedWithoutLoss":
       return { text: "Terminated (Profit)", color: "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800" };
     case "purchased":
       return { text: "Purchased", color: "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800" };
